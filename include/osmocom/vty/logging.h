@@ -7,10 +7,15 @@
 
 struct log_info;
 #pragma GCC diagnostic push
+/* use -Wpragma, so the build doesn't fail in c++ files of osmo-pcu and
+ * osmo-trx including this header with:
+ * 'option ‘-Wstrict-prototypes’ is valid for C/ObjC but not for C++' */
+#pragma GCC diagnostic ignored "-Wpragmas"
 #pragma GCC diagnostic ignored "-Wstrict-prototypes"
 /* note this undefined argument declaration is intentional. There used
  * to be an argument until 2017 which we no longer need .*/
 void logging_vty_add_cmds();
+#pragma GCC diagnostic pop
 #pragma GCC diagnostic pop
 void logging_vty_add_deprecated_subsys(void *ctx, const char *name);
 struct vty;
