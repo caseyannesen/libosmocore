@@ -626,10 +626,15 @@ gan_msgt_vals;
 gan_pdisc_vals;
 
 ipa_ccm_rcvmsg_base;
+ipa_ccm_rcvmsg_base_iofd;
 ipa_ccm_rcvmsg_bts_base;
+ipa_ccm_rcvmsg_bts_base_iofd;
 ipa_ccm_send_id_ack;
+ipa_ccm_send_id_ack_iofd;
 ipa_ccm_send_id_req;
+ipa_ccm_send_id_req_iofd;
 ipa_ccm_send_pong;
+ipa_ccm_send_pong_iofd;
 ipa_ccm_tlv_to_unitdata;
 ipa_ccm_idtag_name;
 ipa_ccm_idtag_parse;
@@ -645,6 +650,7 @@ ipa_parse_unitid;
 ipa_prepend_header;
 ipa_prepend_header_ext;
 ipa_send;
+ipa_iofd_segmentation_cb;
 
 osmo_apn_qualify;
 osmo_apn_qualify_buf;

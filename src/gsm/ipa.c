@@ -39,6 +39,7 @@
 #include <osmocom/core/logging.h>
 #include <osmocom/core/macaddr.h>
 #include <osmocom/core/select.h>
+#include <osmocom/core/osmo_io.h>
 
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
@@ -468,6 +469,36 @@ int ipa_ccm_send_id_req(int fd)
 	return ipa_send(fd, ipa_id_req_msg, sizeof(ipa_id_req_msg));
 }
 
+int ipa_ccm_send_pong_iofd(struct osmo_io_fd *iofd)
+{
+	uint8_t *data;
+	struct msgb *msg = msgb_alloc(sizeof(ipa_pong_msg), "IPA PONG");
+	data = msgb_put(msg, sizeof(ipa_pong_msg));
+	memcpy(data, ipa_pong_msg, sizeof(ipa_pong_msg));
+
+	return osmo_iofd_write_msgb(iofd, msg);
+}
+
+int ipa_ccm_send_id_ack_iofd(struct osmo_io_fd *iofd)
+{
+	uint8_t *data;
+	struct msgb *msg = msgb_alloc(sizeof(ipa_id_ack_msg), "IPA ID ACK");
+	data = msgb_put(msg, sizeof(ipa_id_ack_msg));
+	memcpy(data, ipa_id_ack_msg, sizeof(ipa_id_ack_msg));
+
+	return osmo_iofd_write_msgb(iofd, msg);
+}
+
+int ipa_ccm_send_id_req_iofd(struct osmo_io_fd *iofd)
+{
+	uint8_t *data;
+	struct msgb *msg = msgb_alloc(sizeof(ipa_id_req_msg), "IPA ID REQ");
+	data = msgb_put(msg, sizeof(ipa_id_req_msg));
+	memcpy(data, ipa_id_req_msg, sizeof(ipa_id_req_msg));
+
+	return osmo_iofd_write_msgb(iofd, msg);
+}
+
 /* base handling of the ip.access protocol */
 int ipa_ccm_rcvmsg_base(struct msgb *msg, struct osmo_fd *bfd)
 {
@@ -507,6 +538,44 @@ int ipa_ccm_rcvmsg_base(struct msgb *msg, struct osmo_fd *bfd)
 }
 
 /* base handling of the ip.access protocol */
+int ipa_ccm_rcvmsg_base_iofd(struct msgb *msg, struct osmo_io_fd *iofd)
+{
+	uint8_t msg_type = *(msg->l2h);
+	int ret;
+
+	switch (msg_type) {
+	case IPAC_MSGT_PING:
+		ret = ipa_ccm_send_pong_iofd(iofd);
+		if (ret < 0) {
+			LOGP(DLINP, LOGL_ERROR, "Cannot send PING "
+			     "message. Reason: %s\n", strerror(errno));
+			break;
+		}
+		ret = 1;
+		break;
+	case IPAC_MSGT_PONG:
+		DEBUGP(DLMI, "PONG!\n");
+		ret = 1;
+		break;
+	case IPAC_MSGT_ID_ACK:
+		DEBUGP(DLMI, "ID_ACK? -> ACK!\n");
+		ret = ipa_ccm_send_id_ack_iofd(iofd);
+		if (ret < 0) {
+			LOGP(DLINP, LOGL_ERROR, "Cannot send ID_ACK "
+			     "message. Reason: %s\n", strerror(errno));
+			break;
+		}
+		ret = 1;
+		break;
+	default:
+		/* This is not an IPA PING, PONG or ID_ACK message */
+		ret = 0;
+		break;
+	}
+	return ret;
+}
+
+/* base handling of the ip.access protocol */
 int ipa_ccm_rcvmsg_bts_base(struct msgb *msg, struct osmo_fd *bfd)
 {
 	uint8_t msg_type = *(msg->l2h);
@@ -515,6 +584,30 @@ int ipa_ccm_rcvmsg_bts_base(struct msgb *msg, struct osmo_fd *bfd)
 	switch (msg_type) {
 	case IPAC_MSGT_PING:
 		ret = ipa_ccm_send_pong(bfd->fd);
+		if (ret < 0) {
+			LOGP(DLINP, LOGL_ERROR, "Cannot send PONG "
+			     "message. Reason: %s\n", strerror(errno));
+		}
+		break;
+	case IPAC_MSGT_PONG:
+		DEBUGP(DLMI, "PONG!\n");
+		break;
+	case IPAC_MSGT_ID_ACK:
+		DEBUGP(DLMI, "ID_ACK\n");
+		break;
+	}
+	return ret;
+}
+
+/* base handling of the ip.access protocol */
+int ipa_ccm_rcvmsg_bts_base_iofd(struct msgb *msg, struct osmo_io_fd *iofd)
+{
+	uint8_t msg_type = *(msg->l2h);
+	int ret = 0;
+
+	switch (msg_type) {
+	case IPAC_MSGT_PING:
+		ret = ipa_ccm_send_pong_iofd(iofd);
 		if (ret < 0) {
 			LOGP(DLINP, LOGL_ERROR, "Cannot send PONG "
 			     "message. Reason: %s\n", strerror(errno));
@@ -716,6 +809,40 @@ struct msgb *ipa_msg_alloc(int headroom)
 	if (!nmsg)
 		return NULL;
 	return nmsg;
+}
+
+void ipa_iofd_read_cb(struct osmo_io_fd *iofd, int res, struct msgb *msg)
+{
+
+}
+
+void ipa_iofd_write_cb(struct osmo_io_fd *iofd, int res, struct msgb *msg)
+{
+
+}
+
+int ipa_iofd_segmentation_cb(struct msgb *msg, int read)
+{
+	struct ipaccess_head *hh;
+	int len;
+	if (read < sizeof(*hh))
+		return sizeof(*hh);
+
+	msg->l1h = msg->data;
+	hh = (struct ipaccess_head *) msg->data;
+
+	/* then read the length as specified in header */
+	len = osmo_ntohs(hh->len);
+
+	if (len < 0 || IPA_ALLOC_SIZE < len + sizeof(*hh)) {
+		LOGP(DLINP, LOGL_ERROR, "bad message length of %d bytes, "
+					"received %d bytes\n", len, msg->len);
+		return -EIO;
+	}
+
+	msg->l2h = hh->data;
+
+	return sizeof(*hh) + len;
 }
 
 /*! @} */

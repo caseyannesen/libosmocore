@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/osmo_io.h>
 #include <osmocom/gsm/tlv.h>
 
 struct osmo_fd;
@@ -56,18 +57,27 @@ int ipa_send(int fd, const void *msg, size_t msglen);
 
 /* Send an IPA CCM PONG via the given FD */
 int ipa_ccm_send_pong(int fd);
+int ipa_ccm_send_pong_iofd(struct osmo_io_fd *iofd);
 
 /* Send an IPA CCM ID_ACK via the given FD */
 int ipa_ccm_send_id_ack(int fd);
+int ipa_ccm_send_id_ack_iofd(struct osmo_io_fd *iofd);
 
 /* Send an IPA CCM ID_REQ via the given FD */
 int ipa_ccm_send_id_req(int fd);
+int ipa_ccm_send_id_req_iofd(struct osmo_io_fd *iofd);
 
 /* Common handling of IPA CCM, BSC side */
 int ipa_ccm_rcvmsg_base(struct msgb *msg, struct osmo_fd *bfd);
 
 /* Common handling of IPA CCM, BTS side */
 int ipa_ccm_rcvmsg_bts_base(struct msgb *msg, struct osmo_fd *bfd);
+
+/* Common handling of IPA CCM, BSC side */
+int ipa_ccm_rcvmsg_base_iofd(struct msgb *msg, struct osmo_io_fd *iofd);
+
+/* Common handling of IPA CCM, BTS side */
+int ipa_ccm_rcvmsg_bts_base_iofd(struct msgb *msg, struct osmo_io_fd *iofd);
 
 /* prepend (push) an ipaccess_head_ext to the msgb */
 void ipa_prepend_header_ext(struct msgb *msg, int proto);
@@ -79,3 +89,5 @@ struct msgb *ipa_msg_alloc(int headroom);
 
 int ipa_msg_recv(int fd, struct msgb **rmsg);
 int ipa_msg_recv_buffered(int fd, struct msgb **rmsg, struct msgb **tmp_msg);
+
+int ipa_iofd_segmentation_cb(struct msgb *msg, int read);
