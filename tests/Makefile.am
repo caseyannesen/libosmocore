@@ -122,6 +122,7 @@ abis_abis_test_SOURCES = abis/abis_test.c
 abis_abis_test_LDADD = $(top_builddir)/src/gsm/libosmogsm.la $(LDADD)
 
 ctrl_ctrl_test_SOURCES = ctrl/ctrl_test.c
+ctrl_ctrl_test_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/src/core
 ctrl_ctrl_test_LDADD = \
 	$(top_builddir)/src/ctrl/libosmoctrl.la \
 	$(top_builddir)/src/gsm/libosmogsm.la \

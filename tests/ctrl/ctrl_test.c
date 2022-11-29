@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include <osmocom/core/osmo_io.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/ctrl/control_cmd.h>
 #include <osmocom/core/logging.h>
@@ -11,6 +12,9 @@
 #include <osmocom/core/application.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
 #include <osmocom/ctrl/control_if.h>
+#include <osmo_io_internal.h>
+
+extern struct iofd_backend_ops g_iofd_ops;
 
 static void check_type(enum ctrl_type c)
 {
@@ -109,13 +113,14 @@ static void assert_test(struct ctrl_handle *ctrl, struct ctrl_connection *ccon, 
 	msg = msgb_from_string(t->cmd_str);
 	ctrl_handle_msg(ctrl, ccon, msg);
 
-	if (llist_empty(&ccon->write_queue.msg_queue)) {
+	if (ccon->iofd->tx_queue.current_length == 0) {
 		if (t->reply_str) {
 			printf("Got no reply, but expected \"%s\"\n", osmo_escape_str(t->reply_str, -1));
 			OSMO_ASSERT(!t->reply_str);
 		}
 	} else {
-		struct msgb *sent_msg = msgb_dequeue(&ccon->write_queue.msg_queue);
+		struct iofd_msghdr *sent_msghdr = iofd_txqueue_dequeue(ccon->iofd);
+		struct msgb *sent_msg =  sent_msghdr->msg;
 		OSMO_ASSERT(sent_msg);
 
 		char *strbuf = talloc_size(sent_msg, msgb_l2len(sent_msg) + 1);
@@ -126,8 +131,8 @@ static void assert_test(struct ctrl_handle *ctrl, struct ctrl_connection *ccon, 
 		OSMO_ASSERT(t->reply_str);
 		OSMO_ASSERT(!strcmp(t->reply_str, strbuf));
 		msgb_free(sent_msg);
+		iofd_msghdr_free(sent_msghdr);
 	}
-	osmo_wqueue_clear(&ccon->write_queue);
 
 	msgb_free(msg);
 
@@ -343,10 +348,11 @@ static void test_messages(void)
 	ctrl = ctrl_handle_alloc2(ctx, NULL, NULL, 0);
 	ccon = talloc_zero(ctx, struct ctrl_connection);
 
-	osmo_wqueue_init(&ccon->write_queue, 1);
-
-	for (i = 0; i < ARRAY_SIZE(test_messages_list); i++)
+	for (i = 0; i < ARRAY_SIZE(test_messages_list); i++) {
+		ccon->iofd = osmo_iofd_setup(ccon, -1, "iofd test", OSMO_IO_FD_MODE_READ_WRITE, NULL, ccon);
 		assert_test(ctrl, ccon, &test_messages_list[i]);
+		osmo_iofd_close(ccon->iofd);
+	}
 
 	talloc_free(ccon);
 	talloc_free(ctrl);
@@ -405,8 +411,7 @@ static void test_deferred_cmd(void)
 	ctrl = ctrl_handle_alloc2(ctx, NULL, NULL, 0);
 	ccon = talloc_zero(ctx, struct ctrl_connection);
 	INIT_LLIST_HEAD(&ccon->def_cmds);
-
-	osmo_wqueue_init(&ccon->write_queue, 1);
+	ccon->iofd = osmo_iofd_setup(ccon, -1, "iofd test", OSMO_IO_FD_MODE_READ_WRITE, NULL, ccon);
 
 	ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_test_defer);
 
@@ -431,7 +436,9 @@ static void test_deferred_cmd(void)
 	ctrl_test_defer_cb(test_defer_cd);
 
 	/* simulate sending of the reply */
-	osmo_wqueue_clear(&ccon->write_queue);
+	struct iofd_msghdr *msghdr = iofd_txqueue_dequeue(ccon->iofd);
+	msgb_free(msghdr->msg);
+	iofd_msghdr_free(msghdr);
 
 	/* And now the deferred cmd should be cleaned up completely. */
 	if (talloc_total_size(ctx) != ctx_size_before_defer) {
@@ -460,8 +467,20 @@ static struct log_info info = {
 	.num_cat = ARRAY_SIZE(test_categories),
 };
 
+
+static void iofd_dummy_x_y(struct osmo_io_fd *iofd)
+{
+}
+
 int main(int argc, char **argv)
 {
+	/* Override the iofd backend functions */
+	g_iofd_ops.close = NULL;
+	g_iofd_ops.write_enable = iofd_dummy_x_y;
+	g_iofd_ops.write_disable = iofd_dummy_x_y;
+	g_iofd_ops.read_enable = iofd_dummy_x_y;
+	g_iofd_ops.read_disable = iofd_dummy_x_y;
+
 	ctx = talloc_named_const(NULL, 1, "ctrl_test");
 	osmo_init_logging2(ctx, &info);
 	msgb_talloc_ctx_init(ctx, 0);

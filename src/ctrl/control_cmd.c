@@ -647,7 +647,7 @@ int ctrl_cmd_def_send(struct ctrl_cmd_def *cd)
 		cmd->type = CTRL_TYPE_ERROR;
 	}
 
-	rc = ctrl_cmd_send(&cmd->ccon->write_queue, cmd);
+	rc = ctrl_cmd_send(cmd->ccon->iofd, cmd);
 
 	talloc_free(cmd);
 	llist_del(&cd->list);

@@ -45,11 +45,8 @@ extern const struct value_string ctrl_type_vals[];
 struct ctrl_connection {
 	struct llist_head list_entry;
 
-	/*! The queue for sending data back */
-	struct osmo_wqueue write_queue;
-
-	/*! Buffer for partial input data */
-	struct msgb *pending_msg;
+	/*! The io_fd of the connection */
+	struct osmo_io_fd *iofd;
 
 	/*! Callback if the connection was closed */
 	void (*closed_cb)(struct ctrl_connection *conn);
@@ -59,6 +56,9 @@ struct ctrl_connection {
 
 	/*! Pending deferred command responses for this connection */
 	struct llist_head def_cmds;
+
+	/*! User data pointer to be passed through*/
+	void *data;
 };
 
 struct ctrl_cmd_def;
@@ -123,7 +123,7 @@ int ctrl_cmd_def_send(struct ctrl_cmd_def *cd);
 
 int ctrl_cmd_exec(vector vline, struct ctrl_cmd *command, vector node, void *data);
 int ctrl_cmd_install(enum ctrl_node_type node, struct ctrl_cmd_element *cmd);
-int ctrl_cmd_send(struct osmo_wqueue *queue, struct ctrl_cmd *cmd);
+int ctrl_cmd_send(struct osmo_io_fd *iofd, struct ctrl_cmd *cmd);
 int ctrl_cmd_send_to_all(struct ctrl_handle *ctrl, struct ctrl_cmd *cmd);
 struct ctrl_cmd *ctrl_cmd_parse3(void *ctx, struct msgb *msg, bool *parse_failed);
 struct ctrl_cmd *ctrl_cmd_parse2(void *ctx, struct msgb *msg);
