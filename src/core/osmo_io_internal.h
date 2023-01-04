@@ -19,6 +19,10 @@
 extern const struct iofd_backend_ops iofd_poll_ops;
 #define OSMO_IO_BACKEND_DEFAULT "POLL"
 
+#if defined(HAVE_URING)
+extern struct iofd_backend_ops iofd_uring_ops;
+#endif
+
 struct iofd_backend_ops {
 	int (*register_fd)(struct osmo_io_fd *iofd);
 	int (*unregister_fd)(struct osmo_io_fd *iofd);
