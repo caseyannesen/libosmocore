@@ -31,9 +31,7 @@
 #include <osmocom/core/crcgen.h>
 #include <osmocom/core/endian.h>
 
-#include <osmocom/gprs/protocol/gsm_04_60.h>
-#include <osmocom/gprs/gprs_rlc.h>
-
+#include <osmocom/gsm/protocol/gsm_44_060.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/gsm/gsm0503.h>
 #include <osmocom/codec/codec.h>
@@ -608,7 +606,7 @@ static int _xcch_decode_cB(uint8_t *l2_data, const sbit_t *cB,
 
 /*! convenience wrapper for encoding to coded bits
  *  \param[out] cB caller-allocated buffer for 456 coded bits as per TS 05.03 4.1.3
- *  \param[out] l2_data to-be-encoded L2 Frame
+ *  \param[in] l2_data to-be-encoded L2 Frame
  *  \returns 0 */
 static int _xcch_encode_cB(ubit_t *cB, const uint8_t *l2_data)
 {
@@ -1574,24 +1572,22 @@ static void tch_fr_disassemble(ubit_t *b_bits,
 	}
 }
 
-/* assemble a HR codec frame in format as used inside RTP */
+/* assemble a HR codec frame in the canonical format of ETSI TS 101 318 */
 static void tch_hr_reassemble(uint8_t *tch_data, const ubit_t *b_bits)
 {
-	int i, j;
+	int i;
 
-	tch_data[0] = 0x00; /* F = 0, FT = 000 */
-	memset(tch_data + 1, 0, 14);
-
-	for (i = 0, j = 8; i < 112; i++, j++)
-		tch_data[j >> 3] |= (b_bits[i] << (7 - (j & 7)));
+	memset(tch_data, 0, GSM_HR_BYTES);
+	for (i = 0; i < 112; i++)
+		tch_data[i >> 3] |= (b_bits[i] << (7 - (i & 7)));
 }
 
 static void tch_hr_disassemble(ubit_t *b_bits, const uint8_t *tch_data)
 {
-	int i, j;
+	int i;
 
-	for (i = 0, j = 8; i < 112; i++, j++)
-		b_bits[i] = (tch_data[j >> 3] >> (7 - (j & 7))) & 1;
+	for (i = 0; i < 112; i++)
+		b_bits[i] = (tch_data[i >> 3] >> (7 - (i & 7))) & 1;
 }
 
 /* assemble a EFR codec frame in format as used inside RTP */
@@ -1806,7 +1802,7 @@ static void tch_efr_unreorder(ubit_t *s, ubit_t *p, const ubit_t *w)
 	s[119] = (sum >= 2);
 	memcpy(s + 121, w + 125, 53);
 	sum = s[172] + w[178] + w[179];
-	s[172] = (sum > 2);
+	s[172] = (sum >= 2);
 	memcpy(s + 174, w + 180, 50);
 	sum = s[222] + w[230] + w[231];
 	s[222] = (sum >= 2);
@@ -1862,7 +1858,7 @@ int gsm0503_tch_fr_decode(uint8_t *tch_data, const sbit_t *bursts,
 			return -1;
 		}
 
-		return 23;
+		return GSM_MACBLOCK_LEN;
 	}
 
 	osmo_conv_decode_ber(&gsm0503_tch_fr, cB, conv, n_errors, n_bits_total);
@@ -1929,40 +1925,39 @@ int gsm0503_tch_fr_encode(ubit_t *bursts, const uint8_t *tch_data,
 
 	switch (len) {
 	case GSM_EFR_BYTES: /* TCH EFR */
-
 		tch_efr_disassemble(s, tch_data);
-
 		tch_efr_protected(s, b);
-
 		osmo_crc8gen_set_bits(&gsm0503_tch_efr_crc8, b, 65, p);
-
 		tch_efr_reorder(w, s, p);
-
 		tch_efr_w_to_d(d, w);
-
 		goto coding_efr_fr;
 	case GSM_FR_BYTES: /* TCH FR */
 		tch_fr_disassemble(w, tch_data, net_order);
-
 		tch_fr_b_to_d(d, w);
-
 coding_efr_fr:
 		osmo_crc8gen_set_bits(&gsm0503_tch_fr_crc3, d, 50, p);
-
 		tch_fr_reorder(conv, d, p);
-
 		memcpy(cB + 378, d + 182, 78);
-
 		osmo_conv_encode(&gsm0503_tch_fr, conv, cB);
-
 		h = 0;
-
+		break;
+	case 0:			/* no data, induce BFI in the receiver */
+		/* Do the same thing that sysmoBTS PHY does when fed a 0-length
+		 * payload for DL: set all u(k) bits to 0, and do the same
+		 * with all class 2 bits.  This operation is NOT the same as
+		 * an FR codec frame of all zero bits: with all-zeros d(k) input
+		 * the CRC3 function will produce 111 output, whereas we
+		 * transmit 000 in those parity bits too.  The result will be
+		 * an induced BFI (bad frame indication) condition in the
+		 * receiver, for both TCH/FS and TCH/EFS decoders. */
+		memset(conv, 0, sizeof(conv));
+		memset(cB + 378, 0, 78);
+		osmo_conv_encode(&gsm0503_tch_fr, conv, cB);
+		h = 0;
 		break;
 	case GSM_MACBLOCK_LEN: /* FACCH */
 		_xcch_encode_cB(cB, tch_data);
-
 		h = 1;
-
 		break;
 	default:
 		return -1;
@@ -1979,13 +1974,13 @@ coding_efr_fr:
 }
 
 /*! Perform channel decoding of a HR(v1) channel according TS 05.03
- *  \param[out] tch_data Codec frame in RTP payload format
- *  \param[in] bursts buffer containing the symbols of 8 bursts
+ *  \param[out] tch_data Codec frame in TS 101 318 canonical format
+ *  \param[in] bursts buffer containing the symbols of 6 bursts
  *  \param[in] odd Odd (1) or even (0) frame number
  *  \param[out] n_errors Number of detected bit errors
  *  \param[out] n_bits_total Total number of bits
  *  \returns length of bytes used in \a tch_data output buffer; negative on error */
-int gsm0503_tch_hr_decode(uint8_t *tch_data, const sbit_t *bursts, int odd,
+int gsm0503_tch_hr_decode2(uint8_t *tch_data, const sbit_t *bursts, int odd,
 	int *n_errors, int *n_bits_total)
 {
 	sbit_t iB[912], cB[456], h;
@@ -1999,7 +1994,7 @@ int gsm0503_tch_hr_decode(uint8_t *tch_data, const sbit_t *bursts, int odd,
 			steal -= h;
 		}
 
-		for (i = 2; i < 5; i++) {
+		for (i = 2; i < 6; i++) {
 			gsm0503_tch_burst_unmap(NULL, &bursts[i * 116], &h, 1);
 			steal -= h;
 		}
@@ -2052,7 +2047,35 @@ int gsm0503_tch_hr_decode(uint8_t *tch_data, const sbit_t *bursts, int odd,
 
 	tch_hr_reassemble(tch_data, b);
 
-	return 15;
+	return GSM_HR_BYTES;
+}
+
+/*! Perform channel decoding of a HR(v1) channel according TS 05.03,
+ *  deprecated legacy API.
+ *  \param[out] tch_data Codec frame in pseudo-RFC5993 format
+ *  \param[in] bursts buffer containing the symbols of 6 bursts
+ *  \param[in] odd Odd (1) or even (0) frame number
+ *  \param[out] n_errors Number of detected bit errors
+ *  \param[out] n_bits_total Total number of bits
+ *  \returns length of bytes used in \a tch_data output buffer; negative on error
+ *
+ *  The HR1 codec frame format returned by this function is pseudo-RFC5993,
+ *  not true RFC 5993, as there is no SID classification being done
+ *  and the FT bits in the ToC octet are always set to 0 - but this
+ *  arguably-bogus format is the legacy public API.
+ */
+int gsm0503_tch_hr_decode(uint8_t *tch_data, const sbit_t *bursts, int odd,
+	int *n_errors, int *n_bits_total)
+{
+	int rc;
+
+	rc = gsm0503_tch_hr_decode2(tch_data, bursts, odd, n_errors,
+				    n_bits_total);
+	if (rc != GSM_HR_BYTES)
+		return rc;
+	memmove(tch_data + 1, tch_data, GSM_HR_BYTES);
+	tch_data[0] = 0x00;	/* FT=0, note absence of SID classification */
+	return GSM_HR_BYTES_RTP_RFC5993;
 }
 
 /*! Perform channel encoding on a TCH/HS channel according to TS 05.03
@@ -2067,46 +2090,41 @@ int gsm0503_tch_hr_encode(ubit_t *bursts, const uint8_t *tch_data, int len)
 	int i;
 
 	switch (len) {
-	case 15: /* TCH HR */
+	case GSM_HR_BYTES_RTP_RFC5993:	/* TCH HR with RFC 5993 prefix */
+		tch_data++;
+		/* fall-through */
+	case GSM_HR_BYTES:	/* TCH HR in "pure" form */
 		tch_hr_disassemble(b, tch_data);
-
 		tch_hr_b_to_d(d, b);
-
 		osmo_crc8gen_set_bits(&gsm0503_tch_fr_crc3, d + 73, 22, p);
-
 		tch_hr_reorder(conv, d, p);
-
-		osmo_conv_encode(&gsm0503_tch_hr, conv, cB);
-
 		memcpy(cB + 211, d + 95, 17);
-
+hr_conv_coding:
+		osmo_conv_encode(&gsm0503_tch_hr, conv, cB);
 		h = 0;
-
 		gsm0503_tch_hr_interleave(cB, iB);
-
 		for (i = 0; i < 4; i++) {
 			gsm0503_tch_burst_map(&iB[i * 114],
 				&bursts[i * 116], &h, i >> 1);
 		}
-
 		break;
+	case 0:			/* no data, induce BFI in the receiver */
+		/* see comments in gsm0503_tch_fr_encode() - same deal here */
+		memset(conv, 0, sizeof(conv));
+		memset(cB + 211, 0, 17);
+		goto hr_conv_coding;
 	case GSM_MACBLOCK_LEN: /* FACCH */
 		_xcch_encode_cB(cB, tch_data);
-
 		h = 1;
-
 		gsm0503_tch_fr_interleave(cB, iB);
-
 		for (i = 0; i < 6; i++) {
 			gsm0503_tch_burst_map(&iB[i * 114],
 				&bursts[i * 116], &h, i >> 2);
 		}
-
 		for (i = 2; i < 4; i++) {
 			gsm0503_tch_burst_map(&iB[i * 114 + 456],
 				&bursts[i * 116], &h, 1);
 		}
-
 		break;
 	default:
 		return -1;
@@ -2244,7 +2262,7 @@ int gsm0503_tch_afs_decode_dtx(uint8_t *tch_data, const sbit_t *bursts,
 			tch_amr_sid_update_append(sid_first_dummy, 0,
 						  (codec_mode_req) ? codec[*ft]
 						  : codec[id > 0 ? id : 0]);
-			tch_amr_reassemble(tch_data, conv, 39);
+			tch_amr_reassemble(tch_data, sid_first_dummy, 39);
 			len = 5;
 			goto out;
 		case AFS_SID_UPDATE: /* TODO: parse CMI _and_ CMC/CMR (16 + 16 bit) */
@@ -2608,9 +2626,9 @@ static uint8_t gsm0503_tch_ahs_decode_inband(const sbit_t *cB)
 	return id;
 }
 
-/*! Perform channel decoding of a TCH/AFS channel according TS 05.03
+/*! Perform channel decoding of a TCH/AHS channel according TS 05.03
  *  \param[out] tch_data Codec frame in RTP payload format
- *  \param[in] bursts buffer containing the symbols of 8 bursts
+ *  \param[in] bursts buffer containing the symbols of 6 bursts
  *  \param[in] odd Is this an odd (1) or even (0) frame number?
  *  \param[in] codec_mode_req is this CMR (1) or CMC (0)
  *  \param[in] codec array of active codecs (active codec set)
@@ -2631,9 +2649,9 @@ int gsm0503_tch_ahs_decode(uint8_t *tch_data, const sbit_t *bursts, int odd,
 					  n_bits_total, NULL);
 }
 
-/*! Perform channel decoding of a TCH/AFS channel according TS 05.03
+/*! Perform channel decoding of a TCH/AHS channel according TS 05.03
  *  \param[out] tch_data Codec frame in RTP payload format
- *  \param[in] bursts buffer containing the symbols of 8 bursts
+ *  \param[in] bursts buffer containing the symbols of 6 bursts
  *  \param[in] odd Is this an odd (1) or even (0) frame number?
  *  \param[in] codec_mode_req is this CMR (1) or CMC (0)
  *  \param[in] codec array of active codecs (active codec set)
@@ -3265,6 +3283,493 @@ int gsm0503_sch_encode(ubit_t *burst, const uint8_t *sb_info)
 	osmo_conv_encode(&gsm0503_sch, conv, burst);
 
 	return 0;
+}
+
+/*
+ * GSM CSD transcoding
+ */
+
+static inline void _tch_csd_burst_map(ubit_t *burst, const ubit_t *iB)
+{
+	unsigned int i;
+
+	/* hu(B): copy *even* numbered bits if not stolen by FACCH */
+	if (burst[58] == 0) {
+		for (i = 0; i < 57; i += 2)
+			burst[i] |= iB[i];
+		for (i = 58; i < 114; i += 2)
+			burst[i + 2] |= iB[i];
+	}
+
+	/* hl(B): copy *odd* numbered bits if not stolen by FACCH */
+	if (burst[57] == 0) {
+		for (i = 1; i < 57; i += 2)
+			burst[i] |= iB[i];
+		for (i = 57; i < 114; i += 2)
+			burst[i + 2] |= iB[i];
+	}
+}
+
+/*! Perform channel encoding of a TCH/F9.6 channel as per section 3.3.
+ *  \param[out] bursts Caller-allocated buffer for symbols of 22 bursts,
+ *                     22 * 2 * 58 == 2552 bits total.
+ *  \param[in] data Data to be encoded (240 unpacked bits).
+ *  \returns 0 in case of success; negative on error. */
+int gsm0503_tch_fr96_encode(ubit_t *bursts, const ubit_t *data)
+{
+	ubit_t iB[22 * 114], cB[4 * 114];
+	ubit_t conv[4 * 60 + 4];
+
+	/* 3.3.2 Block code: b1(60) + b2(60) + b3(60) + b4(60) + pad(4) */
+	memcpy(&conv[0], &data[0], 4 * 60);
+	/* pad(4) is set to 0 by osmo_conv_encode() below */
+
+	/* 3.3.3 Convolutional encoder */
+	osmo_conv_encode(&gsm0503_tch_f96, &conv[0], &cB[0]);
+
+	/* 3.3.4 Interleaving */
+	memset(&iB[0], 0, sizeof(iB));
+	gsm0503_tch_f96_interleave(&cB[0], &iB[0]);
+
+	/* 3.3.5 Mapping on a burst: as specified for TCH/FS in subclause 3.1.4 */
+	for (unsigned int i = 0; i < 22; i++)
+		_tch_csd_burst_map(&bursts[i * 116], &iB[i * 114]);
+
+	return 0;
+}
+
+/*! Perform channel decoding of a TCH/F9.6 channel as per section 3.3.
+ *  \param[out] data Caller-allocated buffer for decoded data (240 unpacked bits).
+ *  \param[in] bursts Buffer containing the symbols of 22 bursts,
+ *                    22 * 2 * 58 == 2552 bits total.
+ *  \param[out] n_errors Number of detected bit errors.
+ *  \param[out] n_bits_total Total number of bits.
+ *  \returns Number of unpacked bits used in the output buffer; negative on error. */
+int gsm0503_tch_fr96_decode(ubit_t *data, const sbit_t *bursts,
+			    int *n_errors, int *n_bits_total)
+{
+	sbit_t iB[22 * 114], cB[4 * 114];
+	ubit_t conv[4 * 60 + 4];
+
+	/* 3.3.5 Mapping on a burst: as specified for TCH/FS in subclause 3.1.4 */
+	for (unsigned int i = 0; i < 22; i++) {
+		memcpy(&iB[i * 114], &bursts[i * 116], 57);
+		memcpy(&iB[i * 114 + 57], &bursts[i * 116 + 59], 57);
+	}
+
+	/* 3.3.4 Interleaving */
+	gsm0503_tch_f96_deinterleave(&cB[0], &iB[0]);
+
+	/* 3.3.3 Convolutional encoder */
+	osmo_conv_decode_ber(&gsm0503_tch_f96, &cB[0], &conv[0], n_errors, n_bits_total);
+
+	/* 3.3.2 Block code: b1(60) + b2(60) + b3(60) + b4(60) + pad(4) */
+	memcpy(&data[0], &conv[0], 4 * 60);
+
+	return 4 * 60;
+}
+
+/*! Perform channel encoding of a TCH/F4.8 channel as per section 3.4.
+ *  \param[out] bursts Caller-allocated buffer for symbols of 22 bursts,
+ *                     22 * 2 * 58 == 2552 bits total.
+ *  \param[in] data Data to be encoded (120 unpacked bits).
+ *  \returns 0 in case of success; negative on error */
+int gsm0503_tch_fr48_encode(ubit_t *bursts, const ubit_t *data)
+{
+	ubit_t iB[22 * 114], cB[4 * 114];
+	ubit_t conv[2 * 60 + 32];
+
+	/* 3.4.2 Block code:
+	 *
+	 * Sixteen bits equal to 0 are added to the 60 information bits, the result
+	 * being a block of 76 bits, {u(0),u(1),...,u(75)}, with:
+	 *
+	 * u(19k+p) = d(15k+p)    for k = 0,1,2,3 and p = 0,1,...,14;
+	 * u(19k+p) = 0           for k = 0,1,2,3 and p = 15,16,17,18.
+	 *
+	 * Two such blocks forming a block of 152 bits: u1 + u2. */
+	for (unsigned int k = 0; k < 2 * 4; k++) {
+		memcpy(&conv[19 * k], &data[15 * k], 15);
+		memset(&conv[19 * k + 15], 0, 4);
+	}
+
+	/* 3.4.3 Convolutional encoder */
+	osmo_conv_encode(&gsm0503_tch_f48, &conv[0], &cB[0]);
+
+	/* 3.4.4 Interleaving: as specified for the TCH/F9.6 in subclause 3.3.4 */
+	memset(&iB[0], 0, sizeof(iB));
+	gsm0503_tch_f96_interleave(&cB[0], &iB[0]);
+
+	/* 3.4.5 Mapping on a burst: as specified for TCH/FS in subclause 3.1.4 */
+	for (unsigned int i = 0; i < 22; i++)
+		_tch_csd_burst_map(&bursts[i * 116], &iB[i * 114]);
+
+	return 0;
+}
+
+/*! Perform channel decoding of a TCH/F4.8 channel as per section 3.4.
+ *  \param[out] data Caller-allocated buffer for decoded data (120 unpacked bits).
+ *  \param[in] bursts Buffer containing the symbols of 22 bursts,
+ *                    22 * 2 * 58 == 2552 bits total.
+ *  \param[out] n_errors Number of detected bit errors.
+ *  \param[out] n_bits_total Total number of bits.
+ *  \returns Number of unpacked bits used in the output buffer; negative on error. */
+int gsm0503_tch_fr48_decode(ubit_t *data, const sbit_t *bursts,
+			    int *n_errors, int *n_bits_total)
+{
+	sbit_t iB[22 * 114], cB[4 * 114];
+	ubit_t conv[2 * 60 + 32];
+
+	/* 3.4.5 Mapping on a burst: as specified for TCH/FS in subclause 3.1.4 */
+	for (unsigned int i = 0; i < 22; i++) {
+		memcpy(&iB[i * 114], &bursts[i * 116], 57);
+		memcpy(&iB[i * 114 + 57], &bursts[i * 116 + 59], 57);
+	}
+
+	/* 3.4.4 Interleaving: as specified for the TCH/F9.6 in subclause 3.3.4 */
+	gsm0503_tch_f96_deinterleave(&cB[0], &iB[0]);
+
+	/* 3.4.3 Convolutional encoder */
+	osmo_conv_decode_ber(&gsm0503_tch_f48, &cB[0], &conv[0], n_errors, n_bits_total);
+
+	/* 3.4.2 Block code:
+	 *
+	 * Sixteen bits equal to 0 are added to the 60 information bits, the result
+	 * being a block of 76 bits, {u(0),u(1),...,u(75)}, with:
+	 *
+	 * u(19k+p) = d(15k+p)    for k = 0,1,2,3 and p = 0,1,...,14;
+	 * u(19k+p) = 0           for k = 0,1,2,3 and p = 15,16,17,18.
+	 *
+	 * Two such blocks forming a block of 152 bits: u1 + u2. */
+	for (unsigned int k = 0; k < 2 * 4; k++)
+		memcpy(&data[15 * k], &conv[19 * k], 15);
+
+	return 2 * 60;
+}
+
+/*! Perform channel encoding of a TCH/H4.8 channel as per section 3.5.
+ *  The algorithm is identical to TCH/F9.6, so it's just a wrapper.
+ *  \param[out] bursts Caller-allocated buffer for symbols of 22 bursts,
+ *                     22 * 2 * 58 == 2552 bits total.
+ *  \param[in] data Data to be encoded (240 unpacked bits).
+ *  \returns 0 in case of success; negative on error */
+int gsm0503_tch_hr48_encode(ubit_t *bursts, const ubit_t *data)
+{
+	return gsm0503_tch_fr96_encode(bursts, data);
+}
+
+/*! Perform channel decoding of a TCH/H4.8 channel as per section 3.5.
+ *  The algorithm is identical to TCH/F9.6, so it's just a wrapper.
+ *  \param[out] data Caller-allocated buffer for decoded data (240 unpacked bits).
+ *  \param[in] bursts Buffer containing the symbols of 22 bursts,
+ *                    22 * 2 * 58 == 2552 bits total.
+ *  \param[out] n_errors Number of detected bit errors.
+ *  \param[out] n_bits_total Total number of bits.
+ *  \returns Number of unpacked bits used in the output buffer; negative on error. */
+int gsm0503_tch_hr48_decode(ubit_t *data, const sbit_t *bursts,
+			    int *n_errors, int *n_bits_total)
+{
+	return gsm0503_tch_fr96_decode(data, bursts, n_errors, n_bits_total);
+}
+
+/*! Perform channel encoding of a TCH/F2.4 channel as per section 3.6.
+ *  \param[out] bursts Caller-allocated buffer for symbols of 8 bursts,
+ *                     8 * 2 * 58 == 928 bits total.
+ *  \param[in] data Data to be encoded (72 unpacked bits).
+ *  \returns 0 in case of success; negative on error */
+int gsm0503_tch_fr24_encode(ubit_t *bursts, const ubit_t *data)
+{
+	ubit_t iB[8 * 114], cB[4 * 114];
+	const ubit_t h = 0;
+
+	/* 3.6.{1-3} Block code and Convolutional encoder */
+	osmo_conv_encode(&gsm0503_tch_f24, &data[0], &cB[0]);
+
+	/* 3.6.4 Interleaving: as specified for the TCH/FS in subclause 3.1.3 */
+	gsm0503_tch_fr_interleave(&cB[0], &iB[0]);
+
+	/* 3.6.5 Mapping on a burst: as specified for TCH/FS in subclause 3.1.4 */
+	for (unsigned int i = 0; i < 8; i++)
+		gsm0503_tch_burst_map(&iB[i * 114], &bursts[i * 116], &h, i >> 2);
+
+	return 0;
+}
+
+/*! Perform channel decoding of a TCH/F2.4 channel as per section 3.6.
+ *  \param[out] data Caller-allocated buffer for decoded data (72 unpacked bits).
+ *  \param[in] bursts Buffer containing the symbols of 8 bursts,
+ *                    8 * 2 * 58 == 928 bits total.
+ *  \param[out] n_errors Number of detected bit errors.
+ *  \param[out] n_bits_total Total number of bits.
+ *  \returns Number of unpacked bits used in the output buffer; negative on error. */
+int gsm0503_tch_fr24_decode(ubit_t *data, const sbit_t *bursts,
+			    int *n_errors, int *n_bits_total)
+{
+	sbit_t iB[8 * 114], cB[4 * 114];
+
+	/* 3.6.5 Mapping on a burst: as specified for TCH/FS in subclause 3.1.4 */
+	for (unsigned int i = 0; i < 8; i++)
+		gsm0503_tch_burst_unmap(&iB[i * 114], &bursts[i * 116], NULL, i >> 2);
+
+	/* 3.6.4 Interleaving: as specified for the TCH/FS in subclause 3.1.3 */
+	gsm0503_tch_fr_deinterleave(&cB[0], &iB[0]);
+
+	/* 3.6.{1-3} Block code and Convolutional encoder */
+	osmo_conv_decode_ber(&gsm0503_tch_f24, &cB[0], &data[0], n_errors, n_bits_total);
+
+	return 72;
+}
+
+/*! Perform channel encoding of a TCH/H2.4 channel as per section 3.7.
+ *  \param[out] bursts Caller-allocated buffer for symbols of 22 bursts,
+ *                     22 * 2 * 58 == 2552 bits total.
+ *  \param[in] data Data to be encoded (144 unpacked bits).
+ *  \returns 0 in case of success; negative on error */
+int gsm0503_tch_hr24_encode(ubit_t *bursts, const ubit_t *data)
+{
+	ubit_t iB[22 * 114], cB[4 * 114];
+
+	/* 3.7.{1-3} Block code and Convolutional encoder */
+	osmo_conv_encode(&gsm0503_tch_h24, &data[ 0], &cB[  0]);
+	osmo_conv_encode(&gsm0503_tch_h24, &data[72], &cB[228]);
+
+	/* 3.7.4 Interleaving: as specified for the TCH/F9.6 in subclause 3.3.4 */
+	memset(&iB[0], 0, sizeof(iB));
+	gsm0503_tch_f96_interleave(&cB[0], &iB[0]);
+
+	/* 3.7.5 Mapping on a burst: as specified for TCH/FS in subclause 3.1.4 */
+	for (unsigned int i = 0; i < 22; i++)
+		_tch_csd_burst_map(&bursts[i * 116], &iB[i * 114]);
+
+	return 0;
+}
+
+/*! Perform channel decoding of a TCH/H2.4 channel as per section 3.7.
+ *  \param[out] data Caller-allocated buffer for decoded data (144 unpacked bits).
+ *  \param[in] bursts Buffer containing the symbols of 22 bursts,
+ *                    22 * 2 * 58 == 2552 bits total.
+ *  \param[out] n_errors Number of detected bit errors.
+ *  \param[out] n_bits_total Total number of bits.
+ *  \returns Number of unpacked bits used in the output buffer; negative on error. */
+int gsm0503_tch_hr24_decode(ubit_t *data, const sbit_t *bursts,
+			    int *n_errors, int *n_bits_total)
+{
+	int n_errors_l[2], n_bits_total_l[2];
+	sbit_t iB[22 * 114], cB[4 * 114];
+
+	/* 3.7.5 Mapping on a burst: as specified for TCH/FS in subclause 3.1.4 */
+	for (unsigned int i = 0; i < 22; i++) {
+		memcpy(&iB[i * 114], &bursts[i * 116], 57);
+		memcpy(&iB[i * 114 + 57], &bursts[i * 116 + 59], 57);
+	}
+
+	/* 3.7.4 Interleaving: as specified for the TCH/F9.6 in subclause 3.3.4 */
+	gsm0503_tch_f96_deinterleave(&cB[0], &iB[0]);
+
+	/* 3.7.{1-3} Block code and Convolutional encoder */
+	osmo_conv_decode_ber(&gsm0503_tch_h24, &cB[  0], &data[ 0], &n_errors_l[0], &n_bits_total_l[0]);
+	osmo_conv_decode_ber(&gsm0503_tch_h24, &cB[228], &data[72], &n_errors_l[1], &n_bits_total_l[1]);
+
+	if (n_errors)
+		*n_errors = n_errors_l[0] + n_errors_l[1];
+
+	if (n_bits_total)
+		*n_bits_total = n_bits_total_l[0] + n_bits_total_l[1];
+
+	return 2 * 72;
+}
+
+/*! Perform channel encoding of a TCH/F14.4 channel as per section 3.8.
+ *  \param[out] bursts Caller-allocated buffer for symbols of 22 bursts,
+ *                     22 * 2 * 58 == 2552 bits total.
+ *  \param[in] data Data to be encoded (290 unpacked bits).
+ *  \returns 0 in case of success; negative on error */
+int gsm0503_tch_fr144_encode(ubit_t *bursts, const ubit_t *data)
+{
+	ubit_t iB[22 * 114], cB[4 * 114];
+	ubit_t conv[290 + 4];
+
+	/* 3.8.2 Block code: b(290) + pad(4) */
+	memcpy(&conv[0], &data[0], 290);
+	/* pad(4) is set to 0 by osmo_conv_encode() below */
+
+	/* 3.8.3 Convolutional encoder */
+	osmo_conv_encode(&gsm0503_tch_f144, &conv[0], &cB[0]);
+
+	/* 3.8.4 Interleaving */
+	memset(&iB[0], 0, sizeof(iB));
+	gsm0503_tch_f96_interleave(&cB[0], &iB[0]);
+
+	/* 3.8.5 Mapping on a burst: as specified for TCH/FS in subclause 3.1.4 */
+	for (unsigned int i = 0; i < 22; i++)
+		_tch_csd_burst_map(&bursts[i * 116], &iB[i * 114]);
+
+	return 0;
+}
+
+/*! Perform channel decoding of a TCH/14.4 channel as per section 3.8.
+ *  \param[out] data Caller-allocated buffer for decoded data (290 unpacked bits).
+ *  \param[in] bursts Buffer containing the symbols of 22 bursts,
+ *                    22 * 2 * 58 == 2552 bits total.
+ *  \param[out] n_errors Number of detected bit errors.
+ *  \param[out] n_bits_total Total number of bits.
+ *  \returns Number of unpacked bits used in the output buffer; negative on error. */
+int gsm0503_tch_fr144_decode(ubit_t *data, const sbit_t *bursts,
+			     int *n_errors, int *n_bits_total)
+{
+	sbit_t iB[22 * 114], cB[4 * 114];
+	ubit_t conv[294];
+
+	/* 3.8.5 Mapping on a burst: as specified for TCH/FS in subclause 3.1.4 */
+	for (unsigned int i = 0; i < 22; i++) {
+		memcpy(&iB[i * 114], &bursts[i * 116], 57);
+		memcpy(&iB[i * 114 + 57], &bursts[i * 116 + 59], 57);
+	}
+
+	/* 3.8.4 Interleaving: as specified for the TCH/F9.6 in subclause 3.3.4 */
+	gsm0503_tch_f96_deinterleave(&cB[0], &iB[0]);
+
+	/* 3.8.3 Convolutional encoder */
+	osmo_conv_decode_ber(&gsm0503_tch_f144, &cB[0], &conv[0], n_errors, n_bits_total);
+
+	/* 3.8.2 Block code: b(290) + pad(4) */
+	memcpy(&data[0], &conv[0], 290);
+
+	return 290;
+}
+
+/*
+ * FACCH/[FH] transcoding
+ */
+
+/*! Perform channel encoding of a FACCH/F data as per section 4.2.
+ *  \param[out] bursts Caller-allocated buffer for symbols of 8 bursts,
+ *                     8 * 2 * 58 == 928 bits total.
+ *  \param[in] data FACCH MAC block to be encoded (GSM_MACBLOCK_LEN).
+ *  \returns 0 in case of success; negative on error */
+int gsm0503_tch_fr_facch_encode(ubit_t *bursts, const uint8_t *data)
+{
+	ubit_t iB[8 * 114], cB[4 * 114];
+	const ubit_t h = 1;
+
+	/* 4.2.1-3 as specified for the SACCH in 4.1.1-3 */
+	_xcch_encode_cB(&cB[0], &data[0]);
+
+	/* 4.2.4 Interleaving: as specified for the TCH/FS in subclause 3.1.3 */
+	gsm0503_tch_fr_interleave(&cB[0], &iB[0]);
+
+	/* 4.2.5 Mapping on a Burst:
+	 * - hu(B)=1 the even numbered bits in the first 4 bursts and
+	 * - hl(B)=1 the odd numbered bits of the last 4 bursts are stolen. */
+	for (unsigned int i = 0; i < 8; i++)
+		gsm0503_tch_burst_map(&iB[i * 114], &bursts[i * 116], &h, i >> 2);
+
+	return 0;
+}
+
+/*! Perform channel decoding of a FACCH/F data as per section 4.2.
+ *  \param[out] data Caller-allocated buffer for decoded FACCH (GSM_MACBLOCK_LEN).
+ *  \param[in] bursts Buffer containing the symbols of 8 bursts,
+ *                     8 * 2 * 58 == 928 bits total.
+ *  \param[out] n_errors Number of detected bit errors.
+ *  \param[out] n_bits_total Total number of bits.
+ *  \returns Number of bytes used in the output buffer; negative on error. */
+int gsm0503_tch_fr_facch_decode(uint8_t *data, const sbit_t *bursts,
+				int *n_errors, int *n_bits_total)
+{
+	sbit_t iB[8 * 114], cB[4 * 114];
+	int steal = 0;
+
+	/* FACCH decision: sum of 4 first hu(B) and 4 last hl(B) soft-bits */
+	for (unsigned int i = 0; i < 4; i++)
+		steal -= bursts[i * 116 + 58]; /* hu(B) */
+	for (unsigned int i = 4; i < 8; i++)
+		steal -= bursts[i * 116 + 57]; /* hl(B) */
+	if (steal <= 0)
+		return -1;
+
+	/* 4.2.5 Mapping on a Burst:
+	 * - hu(B)=1 the even numbered bits in the first 4 bursts and
+	 * - hl(B)=1 the odd numbered bits of the last 4 bursts are stolen. */
+	for (unsigned int i = 0; i < 8; i++)
+		gsm0503_tch_burst_unmap(&iB[i * 114], &bursts[i * 116], NULL, i >> 2);
+
+	/* 4.2.4 Interleaving: as specified for the TCH/FS in subclause 3.1.3 */
+	gsm0503_tch_fr_deinterleave(&cB[0], &iB[0]);
+
+	/* 4.2.1-3 as specified for the SACCH in 4.1.1-3 */
+	if (_xcch_decode_cB(&data[0], &cB[0], n_errors, n_bits_total) != 0)
+		return -1;
+
+	return GSM_MACBLOCK_LEN;
+}
+
+/*! Perform channel encoding of a FACCH/H data as per section 4.3.
+ *  \param[out] bursts Caller-allocated buffer for symbols of 6 bursts,
+ *                     6 * 2 * 58 == 696 bits total.
+ *  \param[in] data FACCH MAC block to be encoded (GSM_MACBLOCK_LEN).
+ *  \returns 0 in case of success; negative on error */
+int gsm0503_tch_hr_facch_encode(ubit_t *bursts, const uint8_t *data)
+{
+	ubit_t iB[8 * 114], cB[4 * 114];
+	const ubit_t h = 1;
+
+	/* 4.3.1-3 as specified for the SACCH in 4.1.1-3 */
+	_xcch_encode_cB(&cB[0], &data[0]);
+
+	/* 4.3.4 Interleaving */
+	gsm0503_tch_fr_interleave(&cB[0], &iB[0]);
+
+	/* 4.3.5 Mapping on a Burst:
+	 * - hu(B)=1 the even numbered bits of the first 2 bursts,
+	 * - hu(B)=1 & hl(B)=1 all bits of the middle 2 bursts and
+	 * - hl(B)=1 the odd numbered bits of the last 2 bursts are stolen. */
+	for (unsigned int i = 0; i < 6; i++)
+		gsm0503_tch_burst_map(&iB[i * 114], &bursts[i * 116], &h, i >> 2);
+	for (unsigned int i = 2; i < 4; i++)
+		gsm0503_tch_burst_map(&iB[i * 114 + 456], &bursts[i * 116], &h, 1);
+
+	return 0;
+}
+
+/*! Perform channel decoding of a FACCH/H data as per section 4.3.
+ *  \param[out] data Caller-allocated buffer for decoded FACCH (GSM_MACBLOCK_LEN).
+ *  \param[in] bursts Buffer containing the symbols of 6 bursts,
+ *                     6 * 2 * 58 == 696 bits total.
+ *  \param[out] n_errors Number of detected bit errors.
+ *  \param[out] n_bits_total Total number of bits.
+ *  \returns Number of bytes used in the output buffer; negative on error. */
+int gsm0503_tch_hr_facch_decode(uint8_t *data, const sbit_t *bursts,
+				int *n_errors, int *n_bits_total)
+{
+	sbit_t iB[8 * 114], cB[4 * 114];
+	int steal = 0;
+
+	/* FACCH decision: sum of 4 first hu(B) and 4 last hl(B) soft-bits */
+	for (unsigned int i = 0; i < 4; i++)
+		steal -= bursts[i * 116 + 58]; /* hu(B) */
+	for (unsigned int i = 2; i < 6; i++)
+		steal -= bursts[i * 116 + 57]; /* hl(B) */
+	if (steal <= 0)
+		return -1;
+
+	/* 4.3.5 Mapping on a Burst:
+	 * - hu(B)=1 the even numbered bits of the first 2 bursts,
+	 * - hu(B)=1 & hl(B)=1 all bits of the middle 2 bursts and
+	 * - hl(B)=1 the odd numbered bits of the last 2 bursts are stolen. */
+	for (unsigned int i = 0; i < 6; i++)
+		gsm0503_tch_burst_unmap(&iB[i * 114], &bursts[i * 116], NULL, i >> 2);
+	for (unsigned int i = 2; i < 4; i++)
+		gsm0503_tch_burst_unmap(&iB[i * 114 + 456], &bursts[i * 116], NULL, 1);
+
+	/* 4.3.4 Interleaving */
+	gsm0503_tch_fr_deinterleave(&cB[0], &iB[0]);
+
+	/* 4.3.1-3 as specified for the SACCH in 4.1.1-3 */
+	if (_xcch_decode_cB(&data[0], &cB[0], n_errors, n_bits_total) != 0)
+		return -1;
+
+	return GSM_MACBLOCK_LEN;
 }
 
 /*! @} */

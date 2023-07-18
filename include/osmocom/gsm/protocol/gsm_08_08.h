@@ -54,7 +54,7 @@ struct dtap_header {
 			dlci_spare:3,
 			dlci_cc:2;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 			uint8_t dlci_cc:2, dlci_spare:3, dlci_sapi:3;
 #endif
 		};
@@ -168,12 +168,15 @@ enum BSS_MAP_MSG_TYPE {
 	BSS_MAP_MSG_VGCS_VBS_QUEUING_INDICATION	= 30,
 	BSS_MAP_MSG_UPLINK_RQST		= 31,
 	BSS_MAP_MSG_UPLINK_RQST_ACKNOWLEDGE	= 39,
+	BSS_MAP_MSG_VGCS_VBS_ASSIGNMENT_STATUS	= 59,
+	BSS_MAP_MSG_VGCS_VBS_AREA_CELL_INFO	= 60,
 	BSS_MAP_MSG_UPLINK_RQST_CONFIRMATION	= 73,
 	BSS_MAP_MSG_UPLINK_RELEASE_INDICATION	= 74,
 	BSS_MAP_MSG_UPLINK_REJECT_CMD	= 75,
 	BSS_MAP_MSG_UPLINK_RELEASE_CMD	= 76,
 	BSS_MAP_MSG_UPLINK_SEIZED_CMD	= 77,
 	BSS_MAP_MSG_VGCS_ADDL_INFO		= 0x60,
+	BSS_MAP_MSG_VGCS_SMS			= 0x61,
 	BSS_MAP_MSG_NOTIFICATION_DATA		= 0x62,
 	BSS_MAP_MSG_UPLINK_APP_DATA		= 0x63,
 
@@ -443,6 +446,7 @@ enum gsm0808_chan_indicator {
 	GSM0808_CHAN_SPEECH = 1,
 	GSM0808_CHAN_DATA   = 2,
 	GSM0808_CHAN_SIGN   = 3,
+	GSM0808_CHAN_SPEECH_CTM_TEXT_TELEPHONY = 4,
 };
 
 /* GSM 08.08 3.2.2.11 Channel Type */
@@ -497,6 +501,42 @@ enum gsm0808_permitted_speech {
 	GSM0808_PERM_HR3	= GSM0808_PERM_FR3 | 0x4, /*!< HR AMR */
 	GSM0808_PERM_HR4	= 0x46, /*!< OHR AMR-WB */
 	GSM0808_PERM_HR6	= 0x45, /*!< OHR AMR */
+};
+
+/* 3GPP TS 48.008 3.2.2.11 Channel Type
+ * Transparent: Data Rate */
+enum gsm0808_data_rate_transp {
+	GSM0808_DATA_RATE_TRANSP_32k0	 = 0x3a,
+	GSM0808_DATA_RATE_TRANSP_28k8	 = 0x39,
+	GSM0808_DATA_RATE_TRANSP_14k4	 = 0x18,
+	GSM0808_DATA_RATE_TRANSP_9k6	 = 0x10,
+	GSM0808_DATA_RATE_TRANSP_4k8	 = 0x11,
+	GSM0808_DATA_RATE_TRANSP_2k4	 = 0x12,
+	GSM0808_DATA_RATE_TRANSP_1k2	 = 0x13,
+	GSM0808_DATA_RATE_TRANSP_600	 = 0x14,
+	GSM0808_DATA_RATE_TRANSP_1200_75 = 0x15,
+};
+
+/* 3GPP TS 48.008 3.2.2.11 Channel Type
+ * Non-Transparent: Radio Interface Data Rate (preferred) */
+enum gsm0808_data_rate_non_transp {
+	GSM0808_DATA_RATE_NON_TRANSP_12000_6000	= 0x00,
+	GSM0808_DATA_RATE_NON_TRANSP_43k5	= 0x34,
+	GSM0808_DATA_RATE_NON_TRANSP_29k0	= 0x31,
+	GSM0808_DATA_RATE_NON_TRANSP_14k5	= 0x14,
+	GSM0808_DATA_RATE_NON_TRANSP_12k0	= 0x10,
+	GSM0808_DATA_RATE_NON_TRANSP_6k0	= 0x11,
+};
+
+/* 3GPP TS 48.008 3.2.2.11 Channel Type
+ * Non-Transparent: Allowed Radio Interface Data Rate (all possible allowed) */
+enum gsm0808_data_rate_allowed_r_if {
+	GSM0808_DATA_RATE_NON_TRANSP_ALLOWED_43k5 = 0x40,
+	GSM0808_DATA_RATE_NON_TRANSP_ALLOWED_32k0 = 0x20,
+	GSM0808_DATA_RATE_NON_TRANSP_ALLOWED_29k0 = 0x10,
+	GSM0808_DATA_RATE_NON_TRANSP_ALLOWED_14k5 = 0x08,
+	GSM0808_DATA_RATE_NON_TRANSP_ALLOWED_12k0 = 0x02,
+	GSM0808_DATA_RATE_NON_TRANSP_ALLOWED_6k0  = 0x01,
 };
 
 extern const struct value_string gsm0808_permitted_speech_names[];
@@ -650,6 +690,29 @@ enum gsm0808_speech_codec_rate {
 	GSM0808_SC_CFG_AMR_12_2 = 0x0080,
 };
 
+/* Bit index of a mode as returned by gsm0808_amr_modes_from_cfg[].
+ * Example:
+ *   if (gsm0808_amr_modes_from_cfg[full_rate ? 1 : 0][9] & GSM0808_AMR_MODE_4_75)
+ *       printf("S9 supports 4k75");
+ */
+enum gsm0808_amr_mode {
+	GSM0808_AMR_MODE_4_75 = 0,
+	GSM0808_AMR_MODE_5_15,
+	GSM0808_AMR_MODE_5_90,
+	GSM0808_AMR_MODE_6_70,
+	GSM0808_AMR_MODE_7_40,
+	GSM0808_AMR_MODE_7_95,
+	GSM0808_AMR_MODE_10_2,
+	GSM0808_AMR_MODE_12_2,
+};
+extern const struct value_string gsm0808_amr_mode_names[];
+static inline const char *gsm0808_amr_mode_name(enum gsm0808_amr_mode val)
+{
+	return get_value_string(gsm0808_amr_mode_names, val);
+}
+
+extern const uint8_t gsm0808_amr_modes_from_cfg[2][16];
+
 /* 3GPP TS 48.008 3.2.2.103 Speech Codec List */
 #define SPEECH_CODEC_MAXLEN 255
 struct gsm0808_speech_codec_list {
@@ -657,13 +720,32 @@ struct gsm0808_speech_codec_list {
 	uint8_t len;
 };
 
+/* 3GPP TS 48.008 3.2.2.11 Channel Type
+ * Asymmetry Preference (used for data, non-transparent service) */
+enum gsm0808_channel_type_asym_pref {
+	GSM0808_CT_ASYM_PREF_NOT_APPLICABLE = 0,
+	GSM0808_CT_ASYM_PREF_UL		    = 1,
+	GSM0808_CT_ASYM_PREF_DL		    = 2,
+	GSM0808_CT_ASYM_PREF_SPARE	    = 3,
+};
+
 /* 3GPP TS 48.008 3.2.2.11 Channel Type */
 #define CH_TYPE_PERM_SPCH_MAXLEN 9
 struct gsm0808_channel_type {
 	uint8_t ch_indctr;
 	uint8_t ch_rate_type;
+
+	/* Speech only */
 	uint8_t perm_spch[CH_TYPE_PERM_SPCH_MAXLEN];
 	unsigned int perm_spch_len;
+
+	/* Data only */
+	bool data_transparent;
+	uint8_t data_rate;
+	bool data_rate_allowed_is_set;
+	uint8_t data_rate_allowed;
+	bool data_asym_pref_is_set;
+	enum gsm0808_channel_type_asym_pref data_asym_pref;
 };
 
 /* 3GPP TS 48.008 3.2.2.10 Encryption Information */
@@ -727,7 +809,7 @@ struct gsm0808_diagnostics {
 	uint8_t error_pointer_bit_spare:4,
 			error_pointer_bit:4;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t error_pointer_bit:4, error_pointer_bit_spare:4;
 #endif
 	uint8_t msg[0]; /*! received message which provoked the error */

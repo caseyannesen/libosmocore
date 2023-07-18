@@ -6,7 +6,7 @@
 #include <osmocom/core/defs.h>
 #include <osmocom/codec/codec.h>
 
-/* ECU state for GSM-FR */
+/* ECU state for GSM-FR - deprecated version only! */
 struct osmo_ecu_fr_state {
 	bool subsequent_lost_frame;
 	uint8_t frame_backup[GSM_FR_BYTES];
@@ -62,12 +62,16 @@ int osmo_ecu_frame_in(struct osmo_ecu_state *st, bool bfi,
 /* generate output data for a substitute/erroneous frame */
 int osmo_ecu_frame_out(struct osmo_ecu_state *st, uint8_t *frame_out);
 
+/* is the stream handled by this ECU currently in a DTX pause? */
+bool osmo_ecu_is_dtx_pause(struct osmo_ecu_state *st);
+
 struct osmo_ecu_ops {
 	struct osmo_ecu_state * (*init)(void *ctx, enum osmo_ecu_codec codec);
 	void (*destroy)(struct osmo_ecu_state *);
 	int (*frame_in)(struct osmo_ecu_state *st, bool bfi,
 			const uint8_t *frame, unsigned int frame_bytes);
 	int (*frame_out)(struct osmo_ecu_state *st, uint8_t *frame_out);
+	bool (*is_dtx_pause)(struct osmo_ecu_state *st);
 };
 
 int osmo_ecu_register(const struct osmo_ecu_ops *ops, enum osmo_ecu_codec codec);

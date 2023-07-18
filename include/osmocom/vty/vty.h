@@ -56,20 +56,6 @@ enum vty_type {
 	VTY_SHELL_SERV
 };
 
-struct vty_parent_node {
-	struct llist_head entry;
-
-	/*! private data, specified by creator */
-	void *priv;
-
-	/*! Node status of this vty */
-	int node;
-
-	/*! When reading from a config file, these are the indenting characters expected for children of
-	 * this VTY node. */
-	char *indent;
-};
-
 /*! Internal representation of a single VTY */
 struct vty {
 	/*! underlying file (if any) */

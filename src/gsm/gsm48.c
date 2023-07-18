@@ -42,6 +42,7 @@
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/protocol/gsm_04_08_gprs.h>
 #include <osmocom/gsm/protocol/gsm_23_003.h>
+#include <osmocom/gsm/protocol/gsm_44_068.h>
 
 /*! \addtogroup gsm0408
  *  @{
@@ -129,10 +130,10 @@ const struct tlv_definition gsm48_rr_att_tlvdef = {
 		[GSM48_IE_REALTIME_DIFF]	= { TLV_TYPE_TLV },
 		[GSM48_IE_START_TIME]		= { TLV_TYPE_FIXED, 2 },
 		[GSM48_IE_TIMING_ADVANCE]	= { TLV_TYPE_TV },
-		[GSM48_IE_GROUP_CIP_SEQ]	= { TLV_TYPE_SINGLE_TV },
-		[GSM48_IE_CIP_MODE_SET]		= { TLV_TYPE_SINGLE_TV },
-		[GSM48_IE_GPRS_RESUMPT]		= { TLV_TYPE_SINGLE_TV },
-		[GSM48_IE_SYNC_IND]		= { TLV_TYPE_SINGLE_TV },
+		[GSM48_IE_GROUP_CIP_SEQ_HO]	= { TLV_TYPE_SINGLE_TV },
+		[GSM48_IE_CIP_MODE_SET_HO]	= { TLV_TYPE_SINGLE_TV },
+		[GSM48_IE_GPRS_RESUMPT_HO]	= { TLV_TYPE_SINGLE_TV },
+		[GSM48_IE_SYNC_IND_HO]		= { TLV_TYPE_SINGLE_TV },
 	},
 };
 
@@ -148,7 +149,7 @@ const struct tlv_definition gsm48_mm_att_tlvdef = {
 		[GSM48_IE_NET_DST]		= { TLV_TYPE_TLV },
 
 		[GSM48_IE_LOCATION_AREA]	= { TLV_TYPE_FIXED, 5 },
-		[GSM48_IE_PRIORITY_LEV]		= { TLV_TYPE_SINGLE_TV },
+		[GSM48_IE_PRIORITY_LEV_HO]	= { TLV_TYPE_SINGLE_TV },
 		[GSM48_IE_FOLLOW_ON_PROC]	= { TLV_TYPE_T },
 		[GSM48_IE_CTS_PERMISSION]	= { TLV_TYPE_T },
 	},
@@ -448,10 +449,25 @@ const struct value_string gsm48_chan_mode_names[] = {
 	{ GSM48_CMODE_SPEECH_V1,	"SPEECH_V1" },
 	{ GSM48_CMODE_SPEECH_EFR,	"SPEECH_EFR" },
 	{ GSM48_CMODE_SPEECH_AMR,	"SPEECH_AMR" },
+	{ GSM48_CMODE_SPEECH_V4,	"SPEECH_V4" },
+	{ GSM48_CMODE_SPEECH_V5,	"SPEECH_V5" },
+	{ GSM48_CMODE_SPEECH_V6,	"SPEECH_V6" },
+
+	{ GSM48_CMODE_DATA_43k5_14k5,	"DATA_43k5_14k5" },
+	{ GSM48_CMODE_DATA_29k0_14k5,	"DATA_29k0_14k5" },
+	{ GSM48_CMODE_DATA_43k5_29k0,	"DATA_43k5_29k0" },
+	{ GSM48_CMODE_DATA_14k5_43k5,	"DATA_14k5_43k5" },
+	{ GSM48_CMODE_DATA_14k5_29k0,	"DATA_14k5_29k0" },
+	{ GSM48_CMODE_DATA_29k0_43k5,	"DATA_29k0_43k5" },
+
+	{ GSM48_CMODE_DATA_43k5,	"DATA_43k5" },
+	{ GSM48_CMODE_DATA_32k0,	"DATA_32k0" },
+	{ GSM48_CMODE_DATA_29k0,	"DATA_29k0" },
 	{ GSM48_CMODE_DATA_14k5,	"DATA_14k5" },
 	{ GSM48_CMODE_DATA_12k0,	"DATA_12k0" },
 	{ GSM48_CMODE_DATA_6k0,		"DATA_6k0" },
 	{ GSM48_CMODE_DATA_3k6,		"DATA_3k6" },
+
 	{ GSM48_CMODE_SPEECH_V1_VAMOS,	"SPEECH_V1_VAMOS" },
 	{ GSM48_CMODE_SPEECH_V2_VAMOS,	"SPEECH_V2_VAMOS" },
 	{ GSM48_CMODE_SPEECH_V3_VAMOS,	"SPEECH_V3_VAMOS" },
@@ -493,6 +509,8 @@ enum gsm48_chan_mode gsm48_chan_mode_to_non_vamos(enum gsm48_chan_mode mode)
 		return GSM48_CMODE_SPEECH_EFR;
 	case GSM48_CMODE_SPEECH_V3_VAMOS:
 		return GSM48_CMODE_SPEECH_AMR;
+	case GSM48_CMODE_SPEECH_V5_VAMOS:
+		return GSM48_CMODE_SPEECH_V5;
 	default:
 		return mode;
 	}
@@ -846,11 +864,13 @@ int osmo_mobile_identity_encode_msgb(struct msgb *msg, const struct osmo_mobile_
  * osmo_mobile_identity.
  *
  * \param[out] mi  Return buffer for decoded Mobile Identity.
- * \param[in] msg  The Complete Layer 3 message to extract from (LU, CM Service Req or Paging Resp).
+ * \param[in] l3_data  The Complete Layer 3 message to extract from (LU, CM Service Req or Paging Resp).
+ * \param[in] l3_len  Length of l3_data in bytes.
  * \returns 0 on success, negative on error: return codes as defined in osmo_mobile_identity_decode(), or
  *          -ENOTSUP = not a Complete Layer 3 message,
  */
-int osmo_mobile_identity_decode_from_l3(struct osmo_mobile_identity *mi, struct msgb *msg, bool allow_hex)
+int osmo_mobile_identity_decode_from_l3_buf(struct osmo_mobile_identity *mi, const uint8_t *l3_data, size_t l3_len,
+					    bool allow_hex)
 {
 	const struct gsm48_hdr *gh;
 	int8_t pdisc = 0;
@@ -869,10 +889,10 @@ int osmo_mobile_identity_decode_from_l3(struct osmo_mobile_identity *mi, struct 
 		.tmsi = GSM_RESERVED_TMSI,
 	};
 
-	if (msgb_l3len(msg) < sizeof(*gh))
+	if (l3_len < sizeof(*gh))
 		return -EBADMSG;
 
-	gh = msgb_l3(msg);
+	gh = (void *)l3_data;
 	pdisc = gsm48_hdr_pdisc(gh);
 	mtype = gsm48_hdr_msg_type(gh);
 
@@ -882,12 +902,12 @@ int osmo_mobile_identity_decode_from_l3(struct osmo_mobile_identity *mi, struct 
 		switch (mtype) {
 		case GSM48_MT_MM_LOC_UPD_REQUEST:
 			/* First make sure that lu-> can be dereferenced */
-			if (msgb_l3len(msg) < sizeof(*gh) + sizeof(*lu))
+			if (l3_len < sizeof(*gh) + sizeof(*lu))
 				return -EBADMSG;
 
 			/* Now we know there is enough msgb data to read a lu->mi_len, so also check that */
 			lu = (struct gsm48_loc_upd_req*)gh->data;
-			if (msgb_l3len(msg) < sizeof(*gh) + sizeof(*lu) + lu->mi_len)
+			if (l3_len < sizeof(*gh) + sizeof(*lu) + lu->mi_len)
 				return -EBADMSG;
 			mi_data = lu->mi;
 			mi_len = lu->mi_len;
@@ -897,7 +917,7 @@ int osmo_mobile_identity_decode_from_l3(struct osmo_mobile_identity *mi, struct 
 		case GSM48_MT_MM_CM_REEST_REQ:
 			/* Unfortunately in Phase1 the Classmark2 length is variable, so we cannot
 			 * just use gsm48_service_request struct, and need to parse it manually. */
-			if (msgb_l3len(msg) < sizeof(*gh) + 2)
+			if (l3_len < sizeof(*gh) + 2)
 				return -EBADMSG;
 
 			cm2_len = gh->data[1];
@@ -905,7 +925,7 @@ int osmo_mobile_identity_decode_from_l3(struct osmo_mobile_identity *mi, struct 
 			goto got_cm2;
 
 		case GSM48_MT_MM_IMSI_DETACH_IND:
-			if (msgb_l3len(msg) < sizeof(*gh) + sizeof(*idi))
+			if (l3_len < sizeof(*gh) + sizeof(*idi))
 				return -EBADMSG;
 			idi = (struct gsm48_imsi_detach_ind*) gh->data;
 			mi_data = idi->mi;
@@ -913,7 +933,7 @@ int osmo_mobile_identity_decode_from_l3(struct osmo_mobile_identity *mi, struct 
 			goto got_mi;
 
 		case GSM48_MT_MM_ID_RESP:
-			if (msgb_l3len(msg) < sizeof(*gh) + 2)
+			if (l3_len < sizeof(*gh) + 2)
 				return -EBADMSG;
 			mi_data = gh->data+1;
 			mi_len = gh->data[0];
@@ -928,11 +948,22 @@ int osmo_mobile_identity_decode_from_l3(struct osmo_mobile_identity *mi, struct 
 
 		switch (mtype) {
 		case GSM48_MT_RR_PAG_RESP:
-			if (msgb_l3len(msg) < sizeof(*gh) + sizeof(*paging_response))
+			if (l3_len < sizeof(*gh) + sizeof(*paging_response))
 				return -EBADMSG;
 			paging_response = (struct gsm48_pag_resp*)gh->data;
 			cm2_len = paging_response->cm2_len;
 			cm2_buf = (uint8_t*)&paging_response->cm2;
+			goto got_cm2;
+
+		case GSM48_MT_RR_TALKER_IND:
+			/* Check minimum size: Header + CM2 LV + minimum MI LV */
+			if (l3_len < sizeof(*gh) + 4 + 2)
+				return -EBADMSG;
+			/* CM2 shall be always 3 bytes in length */
+			if (gh->data[0] != 3)
+				return -EBADMSG;
+			cm2_len = gh->data[0];
+			cm2_buf = gh->data + 1;
 			goto got_cm2;
 
 		default:
@@ -947,7 +978,7 @@ got_cm2:
 	/* MI (Mobile Identity) LV follows the Classmark2 */
 
 	/* There must be at least a mi_len byte after the CM2 */
-	if (cm2_buf + cm2_len + 1 > msg->tail)
+	if (cm2_buf + cm2_len + 1 > l3_data + l3_len)
 		return -EBADMSG;
 
 	mi_start = cm2_buf + cm2_len;
@@ -956,10 +987,25 @@ got_cm2:
 
 got_mi:
 	/* mi_data points at the start of the Mobile Identity coding of mi_len bytes */
-	if (mi_data + mi_len > msg->tail)
+	if (mi_data + mi_len > l3_data + l3_len)
 		return -EBADMSG;
 
 	return osmo_mobile_identity_decode(mi, mi_data, mi_len, allow_hex);
+}
+
+/*! Extract Mobile Identity from a Complete Layer 3 message.
+ *
+ * Determine the Mobile Identity data and call osmo_mobile_identity_decode() to return a decoded struct
+ * osmo_mobile_identity.
+ *
+ * \param[out] mi  Return buffer for decoded Mobile Identity.
+ * \param[in] msg  The Complete Layer 3 message to extract from (LU, CM Service Req or Paging Resp).
+ * \returns 0 on success, negative on error: return codes as defined in osmo_mobile_identity_decode(), or
+ *          -ENOTSUP = not a Complete Layer 3 message,
+ */
+int osmo_mobile_identity_decode_from_l3(struct osmo_mobile_identity *mi, struct msgb *msg, bool allow_hex)
+{
+	return osmo_mobile_identity_decode_from_l3_buf(mi, msgb_l3(msg), msgb_l3len(msg), allow_hex);
 }
 
 /*! Return a human readable representation of a struct osmo_mobile_identity.
@@ -1300,7 +1346,64 @@ int gsm48_mi_to_string(char *string, int str_len, const uint8_t *mi, int mi_len)
 	return 1;
 }
 
-/*! Parse TS 04.08 Routing Area Identifier
+/*! Decode to struct osmo_routing_area_id from a 3GPP TS 24.008 § 10.5.5.15 Routing area identification.
+ * \param[out] dst  Store the decoded result here.
+ * \param[in] ra_data  The start of a Routing Area ID in encoded form, to be decoded.
+ * \param[in] ra_data_len  Buffer size available to read from at *ra_data.
+ * \return the number of decoded bytes on success, or negative on error (if the input buffer is too small).
+ */
+int osmo_routing_area_id_decode(struct osmo_routing_area_id *dst, const uint8_t *ra_data, size_t ra_data_len)
+{
+	const struct gsm48_ra_id *ra_id;
+	if (ra_data_len < sizeof(*ra_id))
+		return -ENOSPC;
+
+	gsm48_decode_lai2((void *)ra_data, &dst->lac);
+
+	ra_id = (void *)ra_data;
+	dst->rac = ra_id->rac;
+
+	return sizeof(*ra_id);
+}
+
+/*! Encode struct osmo_routing_area_id to a 3GPP TS 24.008 § 10.5.5.15 Routing area identification: write to a buffer.
+ * \param[out] buf  Return buffer for encoded Mobile Identity.
+ * \param[in] buflen  sizeof(buf).
+ * \param[in] src  RA to encode.
+ * \return Amount of bytes written to buf, or negative on error.
+ */
+int osmo_routing_area_id_encode_buf(uint8_t *buf, size_t buflen, const struct osmo_routing_area_id *src)
+{
+	struct gsm48_ra_id *ra_id;
+	if (buflen < sizeof(*ra_id))
+		return -ENOSPC;
+
+	gsm48_generate_lai2((void *)buf, &src->lac);
+
+	ra_id = (void *)buf;
+	ra_id->rac = src->rac;
+
+	return sizeof(*ra_id);
+}
+
+/*! Encode struct osmo_routing_area_id to a 3GPP TS 24.008 § 10.5.5.15 Routing area identification: append to msgb.
+ * To succeed, the msgb must have tailroom >= sizeof(struct gsm48_ra_id).
+ * \param[out] msg  Append to this msgb.
+ * \param[in] src  Encode this Routing Area ID.
+ * \return Number of bytes appended to msgb, or negative on error.
+ */
+int osmo_routing_area_id_encode_msgb(struct msgb *msg, const struct osmo_routing_area_id *src)
+{
+	int rc = osmo_routing_area_id_encode_buf(msg->tail, msgb_tailroom(msg), src);
+	if (rc <= 0)
+		return rc;
+	msgb_put(msg, rc);
+	return rc;
+}
+
+/*! Parse TS 04.08 Routing Area Identifier.
+ * Preferably use osmo_routing_area_id_decode() instead: struct osmo_routing_area_id is better integrated with other API
+ * like osmo_plmn_cmp().
  *  \param[out] Caller-provided memory for decoded RA ID
  *  \param[in] buf Input buffer pointing to RAI IE value */
 void gsm48_parse_ra(struct gprs_ra_id *raid, const uint8_t *buf)
@@ -1663,6 +1766,10 @@ char *gsm48_pdisc_msgtype_name_buf(char *buf, size_t buf_len, uint8_t pdisc, uin
 		break;
 	case GSM48_PDISC_CC:
 		msgt_names = gsm48_cc_msgtype_names;
+		break;
+	case GSM48_PDISC_GROUP_CC:
+	case GSM48_PDISC_BCAST_CC:
+		msgt_names = osmo_gsm44068_msg_type_names;
 		break;
 	case GSM48_PDISC_NC_SS:
 		msgt_names = gsm48_nc_ss_msgtype_names;

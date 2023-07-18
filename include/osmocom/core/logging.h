@@ -154,7 +154,8 @@ void logp(int subsys, const char *file, int line, int cont, const char *format, 
 #define DLCSN1		-26	/*!< CSN.1 (Concrete Syntax Notation 1) codec */
 #define DLM2PA		-27	/*!< Osmocom M2PA (libosmo-sigtran) */
 #define DLM2UA		-28	/*!< Reserved for future Osmocom M2UA (libosmo-sigtran) */
-#define OSMO_NUM_DLIB	28	/*!< Number of logging sub-systems in libraries */
+#define DLIO		-29	/*!< Osmocom IO sub-system */
+#define OSMO_NUM_DLIB	29	/*!< Number of logging sub-systems in libraries */
 
 /* Colors that can be used in log_info_cat.color */
 #define OSMO_LOGCOLOR_NORMAL NULL
@@ -399,7 +400,6 @@ void logp2(int subsys, unsigned int level, const char *file,
 				__attribute__ ((format (printf, 6, 7)));
 void logp_stub(const char *file, int line, int cont, const char *format, ...);
 int log_init(const struct log_info *inf, void *talloc_ctx);
-int log_initialized(void);
 void log_fini(void);
 int log_check_level(int subsys, unsigned int level);
 

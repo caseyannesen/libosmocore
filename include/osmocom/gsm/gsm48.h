@@ -20,7 +20,9 @@
  * To mark an invalid / unset MNC, this value shall be used. */
 #define GSM_MCC_MNC_INVALID 0xFFFF
 
-/* A parsed GPRS routing area */
+/* A parsed GPRS routing area.
+ * Preferably use struct osmo_routing_area_id, it is better integrated with API like osmo_plmn_cmp().
+ */
 struct gprs_ra_id {
 	uint16_t	mcc;
 	uint16_t	mnc;
@@ -96,12 +98,17 @@ char *osmo_mobile_identity_to_str_c(void *ctx, const struct osmo_mobile_identity
 int osmo_mobile_identity_cmp(const struct osmo_mobile_identity *a, const struct osmo_mobile_identity *b);
 int osmo_mobile_identity_decode(struct osmo_mobile_identity *mi, const uint8_t *mi_data, uint8_t mi_len,
 				bool allow_hex);
+int osmo_mobile_identity_decode_from_l3_buf(struct osmo_mobile_identity *mi, const uint8_t *l3_data, size_t l3_len,
+					    bool allow_hex);
 int osmo_mobile_identity_decode_from_l3(struct osmo_mobile_identity *mi, struct msgb *msg, bool allow_hex);
 int osmo_mobile_identity_encoded_len(const struct osmo_mobile_identity *mi, int *mi_digits);
 int osmo_mobile_identity_encode_buf(uint8_t *buf, size_t buflen, const struct osmo_mobile_identity *mi, bool allow_hex);
 int osmo_mobile_identity_encode_msgb(struct msgb *msg, const struct osmo_mobile_identity *mi, bool allow_hex);
 
 /* Parse Routeing Area Identifier */
+int osmo_routing_area_id_decode(struct osmo_routing_area_id *dst, const uint8_t *ra_data, size_t ra_data_len);
+int osmo_routing_area_id_encode_buf(uint8_t *buf, size_t buflen, const struct osmo_routing_area_id *src);
+int osmo_routing_area_id_encode_msgb(struct msgb *msg, const struct osmo_routing_area_id *src);
 void gsm48_parse_ra(struct gprs_ra_id *raid, const uint8_t *buf);
 void gsm48_encode_ra(struct gsm48_ra_id *out, const struct gprs_ra_id *raid);
 int gsm48_construct_ra(uint8_t *buf, const struct gprs_ra_id *raid) OSMO_DEPRECATED("Use gsm48_encode_ra() instead");

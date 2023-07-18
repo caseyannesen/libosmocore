@@ -43,19 +43,23 @@ static void xor(uint8_t *out, const uint8_t *a, const uint8_t *b, size_t len)
 
 /* 3GPP TS 34.108, section 8.1.2.1 */
 static int xor_gen_vec(struct osmo_auth_vector *vec,
-		       struct osmo_sub_auth_data *aud,
+		       struct osmo_sub_auth_data2 *aud,
 		       const uint8_t *_rand)
 {
 	uint8_t xdout[16], cdout[8];
 	uint8_t ak[6], xmac[8];
 	int i;
 
+	OSMO_ASSERT(aud->algo == OSMO_AUTH_ALG_XOR_3G);
+
 	/* Step 1: xdout = (ki or k) ^ rand */
 	if (aud->type == OSMO_AUTH_TYPE_GSM)
 		xor(xdout, aud->u.gsm.ki, _rand, sizeof(xdout));
-	else if (aud->type == OSMO_AUTH_TYPE_UMTS)
+	else if (aud->type == OSMO_AUTH_TYPE_UMTS) {
+		if (aud->u.umts.k_len != 16)
+			return -EINVAL;
 		xor(xdout, aud->u.umts.k, _rand, sizeof(xdout));
-	else
+	} else
 		return -ENOTSUP;
 
 	/**
@@ -125,7 +129,7 @@ static int xor_gen_vec(struct osmo_auth_vector *vec,
 
 /* 3GPP TS 34.108, section 8.1.2.2 */
 static int xor_gen_vec_auts(struct osmo_auth_vector *vec,
-			    struct osmo_sub_auth_data *aud,
+			    struct osmo_sub_auth_data2 *aud,
 			    const uint8_t *auts,
 			    const uint8_t *rand_auts,
 			    const uint8_t *_rand)
@@ -134,12 +138,16 @@ static int xor_gen_vec_auts(struct osmo_auth_vector *vec,
 	uint8_t ak[6], xmac[8];
 	uint8_t sqnms[6];
 
+	OSMO_ASSERT(aud->algo == OSMO_AUTH_ALG_XOR_3G);
+
 	/* Step 1: xdout = (ki or k) ^ rand */
 	if (aud->type == OSMO_AUTH_TYPE_GSM)
 		xor(xdout, aud->u.gsm.ki, _rand, sizeof(xdout));
-	else if (aud->type == OSMO_AUTH_TYPE_UMTS)
+	else if (aud->type == OSMO_AUTH_TYPE_UMTS) {
+		if (aud->u.umts.k_len != 16)
+			return -EINVAL;
 		xor(xdout, aud->u.umts.k, _rand, sizeof(xdout));
-	else
+	} else
 		return -ENOTSUP;
 
 	/* Step 2: ak = xdout[2-8] */
@@ -168,8 +176,8 @@ static int xor_gen_vec_auts(struct osmo_auth_vector *vec,
 }
 
 static struct osmo_auth_impl xor_alg = {
-	.algo = OSMO_AUTH_ALG_XOR,
-	.name = "XOR (libosmogsm built-in)",
+	.algo = OSMO_AUTH_ALG_XOR_3G,
+	.name = "XOR-3G (libosmogsm built-in)",
 	.priority = 1000,
 	.gen_vec = &xor_gen_vec,
 	.gen_vec_auts = &xor_gen_vec_auts,

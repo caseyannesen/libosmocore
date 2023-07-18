@@ -169,23 +169,9 @@ int ns2_validate(struct gprs_ns2_vc *nsvc,
 	return 0;
 }
 
-
 static int ns_vc_tx(struct gprs_ns2_vc *nsvc, struct msgb *msg)
 {
-	unsigned int bytes = msgb_length(msg);
-	int rc;
-
-
-	rc = nsvc->bind->send_vc(nsvc, msg);
-	if (rc < 0) {
-		RATE_CTR_INC_NS(nsvc, NS_CTR_PKTS_OUT_DROP);
-		RATE_CTR_ADD_NS(nsvc, NS_CTR_BYTES_OUT_DROP, bytes);
-	} else {
-		RATE_CTR_INC_NS(nsvc, NS_CTR_PKTS_OUT);
-		RATE_CTR_ADD_NS(nsvc, NS_CTR_BYTES_OUT, bytes);
-	}
-
-	return rc;
+	return nsvc->bind->send_vc(nsvc, msg);
 }
 
 /* transmit functions */
@@ -282,7 +268,7 @@ int ns2_tx_block_ack(struct gprs_ns2_vc *nsvc, uint16_t *nsvci)
 
 /*! Transmit a NS-RESET on a given NS-VC.
  *  \param[in] nsvc NS-VC used for transmission
- *  \paam[in] cause Numeric NS cause value
+ *  \param[in] cause Numeric NS cause value
  *  \returns 0 in case of success */
 int ns2_tx_reset(struct gprs_ns2_vc *nsvc, uint8_t cause)
 {

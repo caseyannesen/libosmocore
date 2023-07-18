@@ -25,10 +25,9 @@ libosmocoding_la_SOURCES = \
 	gsm0503_amr_dtx.c
 libosmocoding_la_LDFLAGS = \
 	$(LTLDFLAGS_OSMOCODING) \
-	-version-info \
-	$(LIBVERSION) \
+	-version-info $(LIBVERSION) \
 	-no-undefined \
-	$(TALLOC_LIBS)
+	$(NULL)
 
 libosmocoding_la_LIBADD = \
 	$(top_builddir)/src/core/libosmocore.la \
@@ -37,3 +36,4 @@ libosmocoding_la_LIBADD = \
 	$(NULL)
 
 EXTRA_DIST = libosmocoding.map
+EXTRA_libosmocoding_la_DEPENDENCIES = libosmocoding.map

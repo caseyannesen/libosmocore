@@ -232,12 +232,12 @@ struct msgb *gsmtap_makemsg(uint16_t arfcn, uint8_t ts, uint8_t chan_type,
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-/*! Create a new (sending) GSMTAP source socket 
+/*! Create a new (sending) GSMTAP source socket
  *  \param[in] host host name or IP address in string format
  *  \param[in] port UDP port number in host byte order
  *  \return file descriptor of the new socket
  *
- * Opens a GSMTAP source (sending) socket, conncet it to host/port and
+ * Opens a GSMTAP source (sending) socket, connect it to host/port and
  * return resulting fd.  If \a host is NULL, the destination address
  * will be localhost.  If \a port is 0, the default \ref
  * GSMTAP_UDP_PORT will be used.
@@ -251,6 +251,30 @@ int gsmtap_source_init_fd(const char *host, uint16_t port)
 
 	return osmo_sock_init(AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP, host, port,
 				OSMO_SOCK_F_CONNECT);
+}
+
+/*! Create a new (sending) GSMTAP source socket
+ *  \param[in] local_host local host name or IP address in string format
+ *  \param[in] local_port local UDP port number in host byte order
+ *  \param[in] rem_host remote host name or IP address in string format
+ *  \param[in] rem_port remote UDP port number in host byte order
+ *  \return file descriptor of the new socket
+ *
+ * Opens a GSMTAP source (sending) socket, connect it to remote host/port,
+ * bind to local host/port and return resulting fd.
+ * If \a local_host is NULL, the default address is used.
+ * If \a local_port is 0, than random unused port will be selected by OS.
+ * If \a rem_host is NULL, the destination address will be localhost.
+ * If \a rem_port is 0, the default \ref GSMTAP_UDP_PORT will be used.
+ */
+int gsmtap_source_init_fd2(const char *local_host, uint16_t local_port, const char *rem_host, uint16_t rem_port)
+{
+	if (!local_host)
+		return gsmtap_source_init_fd(rem_host, rem_port);
+
+	return osmo_sock_init2(AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP, local_host, local_port,
+			       rem_host ? rem_host : "localhost", rem_port ? rem_port : GSMTAP_UDP_PORT,
+			       OSMO_SOCK_F_BIND | OSMO_SOCK_F_CONNECT);
 }
 
 /*! Add a local sink to an existing GSMTAP source and return fd
@@ -447,22 +471,25 @@ int gsmtap_source_add_sink(struct gsmtap_inst *gti)
 
 
 /*! Open GSMTAP source socket, connect and register osmo_fd
- *  \param[in] host host name or IP address in string format
- *  \param[in] port UDP port number in host byte order
+ *  \param[in] local_host IP address in string format
+ *  \param[in] local_port UDP port number in host byte order
+ *  \param[in] rem_host host name or IP address in string format
+ *  \param[in] rem_port UDP port number in host byte order
  *  \param[in] ofd_wq_mode Register \ref osmo_wqueue (1) or not (0)
  *  \return callee-allocated \ref gsmtap_inst
  *
- * Open GSMTAP source (sending) socket, connect it to host/port,
+ * Open GSMTAP source (sending) socket, connect it to remote host/port,
+ * bind it local host/port,
  * allocate 'struct gsmtap_inst' and optionally osmo_fd/osmo_wqueue
  * registration.
  */
-struct gsmtap_inst *gsmtap_source_init(const char *host, uint16_t port,
-					int ofd_wq_mode)
+struct gsmtap_inst *gsmtap_source_init2(const char *local_host, uint16_t local_port,
+					const char *rem_host, uint16_t rem_port, int ofd_wq_mode)
 {
 	struct gsmtap_inst *gti;
 	int fd, rc;
 
-	fd = gsmtap_source_init_fd(host, port);
+	fd = gsmtap_source_init_fd2(local_host, local_port, rem_host, rem_port);
 	if (fd < 0)
 		return NULL;
 
@@ -486,8 +513,27 @@ struct gsmtap_inst *gsmtap_source_init(const char *host, uint16_t port,
 	return gti;
 }
 
+/*! Open GSMTAP source socket, connect and register osmo_fd
+ *  \param[in] host host name or IP address in string format
+ *  \param[in] port UDP port number in host byte order
+ *  \param[in] ofd_wq_mode Register \ref osmo_wqueue (1) or not (0)
+ *  \return callee-allocated \ref gsmtap_inst
+ *
+ * Open GSMTAP source (sending) socket, connect it to host/port,
+ * allocate 'struct gsmtap_inst' and optionally osmo_fd/osmo_wqueue
+ * registration.
+ */
+struct gsmtap_inst *gsmtap_source_init(const char *host, uint16_t port,
+					int ofd_wq_mode)
+{
+	return gsmtap_source_init2(NULL, 0, host, port, ofd_wq_mode);
+}
+
 void gsmtap_source_free(struct gsmtap_inst *gti)
 {
+	if (!gti)
+		return;
+
 	if (gti->ofd_wq_mode) {
 		osmo_fd_unregister(&gti->wq.bfd);
 		osmo_wqueue_clear(&gti->wq);
@@ -540,6 +586,8 @@ const struct value_string gsmtap_type_names[] = {
 	{ GSMTAP_TYPE_TETRA_I1,		"TETRA V+D"  },
 	{ GSMTAP_TYPE_TETRA_I1_BURST,	"TETRA bursts" },
 	{ GSMTAP_TYPE_WMX_BURST,	"WiMAX burst" },
+	{ GSMTAP_TYPE_GB_LLC,		"GPRS Gb LLC" },
+	{ GSMTAP_TYPE_GB_SNDCP,		"GPRS Gb SNDCP" },
 	{ GSMTAP_TYPE_GMR1_UM,		"GMR-1 air interfeace (MES-MS<->GTS)"},
 	{ GSMTAP_TYPE_UMTS_RLC_MAC,	"UMTS RLC/MAC" },
 	{ GSMTAP_TYPE_UMTS_RRC,		"UMTS RRC" },
@@ -548,6 +596,9 @@ const struct value_string gsmtap_type_names[] = {
 	{ GSMTAP_TYPE_LTE_MAC_FRAMED,	"LTE MAC with context hdr" },
 	{ GSMTAP_TYPE_OSMOCORE_LOG,	"libosmocore logging" },
 	{ GSMTAP_TYPE_QC_DIAG,		"Qualcomm DIAG" },
+	{ GSMTAP_TYPE_LTE_NAS,		"LTE Non-Access Stratum" },
+	{ GSMTAP_TYPE_E1T1,		"E1/T1 lines" },
+	{ GSMTAP_TYPE_GSM_RLP,		"GSM Radio Link Protocol" },
 	{ 0, NULL }
 };
 

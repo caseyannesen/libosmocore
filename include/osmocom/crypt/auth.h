@@ -30,12 +30,41 @@ enum osmo_auth_algo {
 	OSMO_AUTH_ALG_COMP128v1,
 	OSMO_AUTH_ALG_COMP128v2,
 	OSMO_AUTH_ALG_COMP128v3,
-	OSMO_AUTH_ALG_XOR,
+	OSMO_AUTH_ALG_XOR_3G,
 	OSMO_AUTH_ALG_MILENAGE,
+	OSMO_AUTH_ALG_XOR_2G,
+	OSMO_AUTH_ALG_TUAK,
 	_OSMO_AUTH_ALG_NUM,
 };
+/* Backwards-compatibility. We used to call XOR-3G just "XOR" which became ambiguous when
+ * we started to add XOR-2G support. */
+#define OSMO_AUTH_ALG_XOR OSMO_AUTH_ALG_XOR_3G
 
 /*! permanent (secret) subscriber auth data */
+struct osmo_sub_auth_data2 {
+	enum osmo_sub_auth_type type;
+	enum osmo_auth_algo algo;
+	union {
+		struct {
+			/* See 3GPP TS 33.102 Section 9.3.7 Length of authentication parameters */
+			uint8_t opc[32]; /*!< operator invariant value */
+			uint8_t opc_len; /*!< OPc length (in bytes): 16 or 32 */
+			uint8_t k[32];	/*!< secret key of the subscriber */
+			uint8_t k_len;	/*!< K length (in bytes): 16 or 32 */
+			uint8_t amf[2];
+			uint64_t sqn;	/*!< sequence number (in: prev sqn; out: used sqn) */
+			int opc_is_op;	/*!< is the OPC field OPC (0) or OP (1) ? */
+			unsigned int ind_bitlen; /*!< nr of bits not in SEQ, only SQN */
+			unsigned int ind; /*!< which IND slot to use an SQN from */
+			uint64_t sqn_ms; /*!< sqn from AUTS (output value only) */
+		} umts;
+		struct {
+			uint8_t ki[OSMO_A5_MAX_KEY_LEN_BYTES];	/*!< secret key */
+		} gsm;
+	} u;
+};
+
+/* deprecated older structure without support for 32-byte K/OP[c] */
 struct osmo_sub_auth_data {
 	enum osmo_sub_auth_type type;
 	enum osmo_auth_algo algo;
@@ -63,7 +92,7 @@ struct osmo_auth_vector {
 	uint8_t ck[OSMO_A5_MAX_KEY_LEN_BYTES];		/*!< ciphering key */
 	uint8_t ik[OSMO_A5_MAX_KEY_LEN_BYTES];		/*!< integrity key */
 	uint8_t res[16];	/*!< authentication result */
-	uint8_t res_len;	/*!< length (in bytes) of res */
+	uint8_t res_len;	/*!< length (in bytes) of res: 4..16 bytes */
 	uint8_t kc[8];		/*!< Kc for GSM encryption (A5) */
 	uint8_t sres[4];	/*!< authentication result for GSM */
 	uint32_t auth_types;	/*!< bitmask of OSMO_AUTH_TYPE_* */
@@ -78,21 +107,31 @@ struct osmo_auth_impl {
 
 	/*! callback for generate authentication vectors */
 	int (*gen_vec)(struct osmo_auth_vector *vec,
-			struct osmo_sub_auth_data *aud,
+			struct osmo_sub_auth_data2 *aud,
 			const uint8_t *_rand);
 
-	/* callback for generationg auth vectors + re-sync */
+	/*! callback for generating auth vectors + re-sync */
 	int (*gen_vec_auts)(struct osmo_auth_vector *vec,
-			    struct osmo_sub_auth_data *aud,
+			    struct osmo_sub_auth_data2 *aud,
 			    const uint8_t *auts, const uint8_t *rand_auts,
 			    const uint8_t *_rand);
 };
 
 int osmo_auth_gen_vec(struct osmo_auth_vector *vec,
-		      struct osmo_sub_auth_data *aud, const uint8_t *_rand);
+		      struct osmo_sub_auth_data *aud, const uint8_t *_rand)
+	OSMO_DEPRECATED_OUTSIDE("Use osmo_auth_gen_vec2 instead");
+
+int osmo_auth_gen_vec2(struct osmo_auth_vector *vec,
+		       struct osmo_sub_auth_data2 *aud, const uint8_t *_rand);
 
 int osmo_auth_gen_vec_auts(struct osmo_auth_vector *vec,
 			   struct osmo_sub_auth_data *aud,
+			   const uint8_t *auts, const uint8_t *rand_auts,
+			   const uint8_t *_rand)
+	OSMO_DEPRECATED_OUTSIDE("Use osmo_auth_gen_vec_auts2 instead");
+
+int osmo_auth_gen_vec_auts2(struct osmo_auth_vector *vec,
+			   struct osmo_sub_auth_data2 *aud,
 			   const uint8_t *auts, const uint8_t *rand_auts,
 			   const uint8_t *_rand);
 
@@ -106,5 +145,6 @@ const char *osmo_auth_alg_name(enum osmo_auth_algo alg);
 enum osmo_auth_algo osmo_auth_alg_parse(const char *name);
 
 void osmo_auth_c3(uint8_t kc[], const uint8_t ck[], const uint8_t ik[]);
+void osmo_auth_c2(uint8_t sres[4], const uint8_t *res, size_t res_len, uint8_t sres_deriv_func);
 
 /* @} */

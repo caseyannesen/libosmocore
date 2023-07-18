@@ -77,6 +77,21 @@ vector cmdvec;
 /* Host information structure. */
 struct host host;
 
+struct vty_parent_node {
+	struct llist_head entry;
+
+	/*! private data, specified by creator */
+	void *priv;
+	void *index;
+
+	/*! Node status of this vty */
+	int node;
+
+	/*! When reading from a config file, these are the indenting characters expected for children of
+	 * this VTY node. */
+	char *indent;
+};
+
 /* Standard command node structures. */
 struct cmd_node auth_node = {
 	AUTH_NODE,
@@ -2438,6 +2453,7 @@ static bool vty_pop_parent(struct vty *vty)
 	llist_del(&parent->entry);
 	vty->node = parent->node;
 	vty->priv = parent->priv;
+	vty->index = parent->index;
 	if (vty->indent)
 		talloc_free(vty->indent);
 	vty->indent = parent->indent;
@@ -2648,6 +2664,7 @@ cmd_execute_command_real(vector vline, struct vty *vty,
 		struct vty_parent_node this_node = {
 				.node = vty->node,
 				.priv = vty->priv,
+				.index = vty->index,
 				.indent = vty->indent,
 			};
 		struct vty_parent_node *parent = vty_parent(vty);
@@ -2923,6 +2940,7 @@ int config_from_file(struct vty *vty, FILE * fp)
 		this_node = (struct vty_parent_node){
 				.node = vty->node,
 				.priv = vty->priv,
+				.index = vty->index,
 				.indent = vty->indent,
 			};
 
@@ -2979,7 +2997,7 @@ return_invalid_indent:
 /* Configration from terminal */
 DEFUN(config_terminal,
       config_terminal_cmd,
-      "configure terminal",
+      "configure [terminal]",
       "Configuration from vty interface\n" "Configuration terminal\n")
 {
 	if (vty_config_lock(vty))

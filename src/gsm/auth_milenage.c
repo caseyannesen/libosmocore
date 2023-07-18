@@ -19,6 +19,7 @@
  *
  */
 
+#include <errno.h>
 #include <osmocom/crypt/auth.h>
 #include <osmocom/core/bits.h>
 #include "milenage/common.h"
@@ -28,7 +29,7 @@
  *  @{
  */
 
-static const uint8_t *gen_opc_if_needed(const struct osmo_sub_auth_data *aud, uint8_t *gen_opc)
+static const uint8_t *gen_opc_if_needed(const struct osmo_sub_auth_data2 *aud, uint8_t *gen_opc)
 {
 	int rc;
 
@@ -43,7 +44,7 @@ static const uint8_t *gen_opc_if_needed(const struct osmo_sub_auth_data *aud, ui
 }
 
 static int milenage_gen_vec(struct osmo_auth_vector *vec,
-			    struct osmo_sub_auth_data *aud,
+			    struct osmo_sub_auth_data2 *aud,
 			    const uint8_t *_rand)
 {
 	size_t res_len = sizeof(vec->res);
@@ -53,7 +54,15 @@ static int milenage_gen_vec(struct osmo_auth_vector *vec,
 	uint8_t sqn[6];
 	uint64_t ind_mask;
 	uint64_t seq_1;
-	int rc;
+
+	OSMO_ASSERT(aud->algo == OSMO_AUTH_ALG_MILENAGE);
+
+	if (aud->u.umts.k_len != 16)
+		return -EINVAL;
+	if (aud->u.umts.opc_len != 16)
+		return -EINVAL;
+	if (vec->res_len != 4 && vec->res_len != 8)
+		return -EINVAL;
 
 	opc = gen_opc_if_needed(aud, gen_opc);
 	if (!opc)
@@ -127,10 +136,9 @@ static int milenage_gen_vec(struct osmo_auth_vector *vec,
 	milenage_generate(opc, aud->u.umts.amf, aud->u.umts.k,
 			  sqn, _rand,
 			  vec->autn, vec->ik, vec->ck, vec->res, &res_len);
-	vec->res_len = res_len;
-	rc = gsm_milenage(opc, aud->u.umts.k, _rand, vec->sres, vec->kc);
-	if (rc < 0)
-		return rc;
+
+	osmo_auth_c3(vec->kc, vec->ck, vec->ik);
+	osmo_auth_c2(vec->sres, vec->res, vec->res_len, 1);
 
 	vec->auth_types = OSMO_AUTH_TYPE_UMTS | OSMO_AUTH_TYPE_GSM;
 
@@ -141,7 +149,7 @@ static int milenage_gen_vec(struct osmo_auth_vector *vec,
 }
 
 static int milenage_gen_vec_auts(struct osmo_auth_vector *vec,
-				 struct osmo_sub_auth_data *aud,
+				 struct osmo_sub_auth_data2 *aud,
 				 const uint8_t *auts, const uint8_t *rand_auts,
 				 const uint8_t *_rand)
 {
@@ -149,6 +157,13 @@ static int milenage_gen_vec_auts(struct osmo_auth_vector *vec,
 	uint8_t gen_opc[16];
 	const uint8_t *opc;
 	int rc;
+
+	OSMO_ASSERT(aud->algo == OSMO_AUTH_ALG_MILENAGE);
+
+	if (aud->u.umts.k_len != 16)
+		return -EINVAL;
+	if (aud->u.umts.opc_len != 16)
+		return -EINVAL;
 
 	opc = gen_opc_if_needed(aud, gen_opc);
 

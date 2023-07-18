@@ -15,6 +15,10 @@
 /* TS 101318 Chapter 5.3: 244 bits + 4bit sig */
 #define GSM_EFR_BYTES	31
 
+/* Number of bytes of an GSM_HR RTP payload */
+#define GSM_HR_BYTES_RTP_RFC5993 (GSM_HR_BYTES + 1)
+#define GSM_HR_BYTES_RTP_TS101318 (GSM_HR_BYTES)
+
 extern const uint16_t gsm610_bitorder[];	/* FR */
 extern const uint16_t gsm620_unvoiced_bitorder[]; /* HR unvoiced */
 extern const uint16_t gsm620_voiced_bitorder[];   /* HR voiced */
@@ -28,6 +32,8 @@ extern const uint16_t gsm690_6_7_bitorder[];	/* AMR  6.7  kbits */
 extern const uint16_t gsm690_5_9_bitorder[];	/* AMR  5.9  kbits */
 extern const uint16_t gsm690_5_15_bitorder[];	/* AMR  5.15 kbits */
 extern const uint16_t gsm690_4_75_bitorder[];	/* AMR  4.75 kbits */
+
+extern const uint8_t osmo_gsm611_silence_frame[GSM_FR_BYTES];
 
 extern const struct value_string osmo_amr_type_names[];
 
@@ -81,8 +87,53 @@ static inline bool osmo_amr_is_speech(enum osmo_amr_type ft)
 	}
 }
 
+/* SID ternary classification per GSM 06.31 & 06.81 section 6.1.1 */
+enum osmo_gsm631_sid_class {
+       OSMO_GSM631_SID_CLASS_SPEECH  = 0,
+       OSMO_GSM631_SID_CLASS_INVALID = 1,
+       OSMO_GSM631_SID_CLASS_VALID   = 2,
+};
+
 bool osmo_fr_check_sid(const uint8_t *rtp_payload, size_t payload_len);
 bool osmo_hr_check_sid(const uint8_t *rtp_payload, size_t payload_len);
+bool osmo_efr_check_sid(const uint8_t *rtp_payload, size_t payload_len);
+
+enum osmo_gsm631_sid_class osmo_fr_sid_classify(const uint8_t *rtp_payload);
+enum osmo_gsm631_sid_class osmo_efr_sid_classify(const uint8_t *rtp_payload);
+
+/*! Check if given FR codec frame is any kind of SID, valid or invalid
+ *  \param[in] rtp_payload Buffer with RTP payload
+ *  \returns true if the frame is an "accepted SID frame" in GSM 06.31
+ *  definition, false otherwise.
+ */
+static inline bool osmo_fr_is_any_sid(const uint8_t *rtp_payload)
+{
+	enum osmo_gsm631_sid_class sidc;
+
+	sidc = osmo_fr_sid_classify(rtp_payload);
+	return sidc != OSMO_GSM631_SID_CLASS_SPEECH;
+}
+
+/*! Check if given EFR codec frame is any kind of SID, valid or invalid
+ *  \param[in] rtp_payload Buffer with RTP payload
+ *  \returns true if the frame is an "accepted SID frame" in GSM 06.81
+ *  definition, false otherwise.
+ */
+static inline bool osmo_efr_is_any_sid(const uint8_t *rtp_payload)
+{
+	enum osmo_gsm631_sid_class sidc;
+
+	sidc = osmo_efr_sid_classify(rtp_payload);
+	return sidc != OSMO_GSM631_SID_CLASS_SPEECH;
+}
+
+bool osmo_fr_sid_preen(uint8_t *rtp_payload);
+bool osmo_efr_sid_preen(uint8_t *rtp_payload);
+
+void osmo_fr_sid_reset(uint8_t *rtp_payload);
+void osmo_hr_sid_reset(uint8_t *rtp_payload);
+void osmo_efr_sid_reset(uint8_t *rtp_payload);
+
 int osmo_amr_rtp_enc(uint8_t *payload, uint8_t cmr, enum osmo_amr_type ft,
 		     enum osmo_amr_quality bfi);
 int osmo_amr_rtp_dec(const uint8_t *payload, int payload_len, uint8_t *cmr,

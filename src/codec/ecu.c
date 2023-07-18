@@ -44,7 +44,7 @@ static const struct osmo_ecu_ops *g_ecu_ops[_NUM_OSMO_ECU_CODECS];
 
 /*! initialize an ECU instance for given codec.
  *  \param[in] ctx talloc context from which to allocate
- *  \parma[in] codec codec for which to initialize/create ECU */
+ *  \param[in] codec codec for which to initialize/create ECU */
 struct osmo_ecu_state *osmo_ecu_init(void *ctx, enum osmo_ecu_codec codec)
 {
 	if (codec >= ARRAY_SIZE(g_ecu_ops))
@@ -94,6 +94,20 @@ int osmo_ecu_frame_out(struct osmo_ecu_state *st, uint8_t *frame_out)
 	if (!g_ecu_ops[st->codec])
 		return -EBUSY;
 	return g_ecu_ops[st->codec]->frame_out(st, frame_out);
+}
+
+/*! check if the current state of this ECU is a DTX pause.
+ *  \param[in] st ECU state/instance on which to operate
+ *  \return true if DTX pause, false otherwise */
+bool osmo_ecu_is_dtx_pause(struct osmo_ecu_state *st)
+{
+	if (st->codec >= ARRAY_SIZE(g_ecu_ops))
+		return false;
+	if (!g_ecu_ops[st->codec])
+		return false;
+	if (!g_ecu_ops[st->codec]->is_dtx_pause)
+		return false;
+	return g_ecu_ops[st->codec]->is_dtx_pause(st);
 }
 
 /***********************************************************************

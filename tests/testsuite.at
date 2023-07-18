@@ -126,6 +126,12 @@ cat $abs_srcdir/auth/milenage_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/auth/milenage_test], [0], [expout], [ignore])
 AT_CLEANUP
 
+AT_SETUP([auth_xor2g])
+AT_KEYWORDS([auth_xor2g])
+cat $abs_srcdir/auth/xor2g_test.ok > expout
+AT_CHECK([$abs_top_builddir/tests/auth/xor2g_test], [0], [expout], [ignore])
+AT_CLEANUP
+
 AT_SETUP([comp128])
 AT_KEYWORDS([comp128])
 cat $abs_srcdir/comp128/comp128_test.ok > expout
@@ -483,4 +489,30 @@ AT_SETUP([iuup])
 AT_KEYWORDS([iuup])
 cat $abs_srcdir/iuup/iuup_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/iuup/iuup_test], [0], [expout], [ignore])
+AT_CLEANUP
+
+AT_SETUP([v110_test_frame])
+AT_KEYWORDS([v110_test_frame])
+cat $abs_srcdir/v110/test_frame.ok > expout
+AT_CHECK([$abs_top_builddir/tests/v110/test_frame], [], [expout],[])
+AT_CLEANUP
+
+AT_SETUP([v110_test_ra1])
+AT_KEYWORDS([v110_test_ra1])
+cat $abs_srcdir/v110/test_ra1.ok > expout
+AT_CHECK([$abs_top_builddir/tests/v110/test_ra1], [], [expout],[])
+AT_CLEANUP
+
+AT_SETUP([gsm44021_test_frame_csd])
+AT_KEYWORDS([gsm44021_test_frame_csd])
+cat $abs_srcdir/gsm44021/test_frame_csd.ok > expout
+AT_CHECK([$abs_top_builddir/tests/gsm44021/test_frame_csd], [], [expout],[])
+AT_CLEANUP
+
+AT_SETUP([osmo_io])
+AT_KEYWORDS([osmo_io])
+cat $abs_srcdir/osmo_io/osmo_io_test.ok > expout
+cat $abs_srcdir/osmo_io/osmo_io_test.err > experr
+touch experr
+AT_CHECK([$abs_top_builddir/tests/osmo_io/osmo_io_test], [0], [expout], [experr])
 AT_CLEANUP

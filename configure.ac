@@ -55,6 +55,7 @@ case $host in
 	LTLDFLAGS_OSMOGSM='-Wl,--version-script=$(srcdir)/libosmogsm.map'
 	LTLDFLAGS_OSMOISDN='-Wl,--version-script=$(srcdir)/libosmoisdn.map'
 	LTLDFLAGS_OSMOCODING='-Wl,--version-script=$(srcdir)/libosmocoding.map'
+	LTLDFLAGS_OSMOCORE='-Wl,--version-script=$(srcdir)/libosmocore.map'
 	LTLDFLAGS_OSMOCTRL='-Wl,--version-script=$(srcdir)/libosmoctrl.map'
 	;;
 esac
@@ -62,11 +63,13 @@ AC_SUBST(LTLDFLAGS_OSMOGB)
 AC_SUBST(LTLDFLAGS_OSMOGSM)
 AC_SUBST(LTLDFLAGS_OSMOISDN)
 AC_SUBST(LTLDFLAGS_OSMOCODING)
+AC_SUBST(LTLDFLAGS_OSMOCORE)
 AC_SUBST(LTLDFLAGS_OSMOCTRL)
 
 dnl checks for header files
 AC_HEADER_STDC
 AC_CHECK_HEADERS(execinfo.h poll.h sys/select.h sys/socket.h sys/signalfd.h sys/eventfd.h sys/timerfd.h syslog.h ctype.h netinet/tcp.h netinet/in.h)
+AC_CHECK_DECL(HAVE_SYS_SOCKET_H, AC_SUBST(HAVE_SYS_SOCKET_H, 1), AC_SUBST(HAVE_SYS_SOCKET_H, 0))
 # for src/conv.c
 AC_FUNC_ALLOCA
 AC_SEARCH_LIBS([dlopen], [dl dld], [LIBRARY_DLOPEN="$LIBS";LIBS=""])
@@ -294,13 +297,13 @@ fi
 
 AC_ARG_ENABLE(bsc_fd_check,
 	[AS_HELP_STRING(
-		[--enable-bsc-fd-check],
+		[--enable-ofd-check],
 		[Instrument osmo_fd_register to check that the fd is registered]
 	)],
 	[fd_check=$enableval], [fd_check="no"])
-if test x"$fd_check" = x"no"
+if test x"$fd_check" = x"yes"
 then
-	AC_DEFINE([OSMO_FD_CHECK],[1],[Instrument the osmo_fd_register])
+	AC_DEFINE([OSMO_FD_CHECK], [1], [Instrument the osmo_fd_register])
 fi
 
 AC_ARG_ENABLE([force_io_select],
@@ -310,7 +313,7 @@ AC_ARG_ENABLE([force_io_select],
 	)],
 	[force_io_select=$enableval], [force_io_select="no"])
 AS_IF([test "x$force_io_select" = "xyes"], [
-	AC_DEFINE([FORCE_IO_SELECT], [1], [Force the use of select() instaed of poll()])
+	AC_DEFINE([FORCE_IO_SELECT], [1], [Force the use of select() instead of poll()])
 ])
 
 AC_ARG_ENABLE(msgfile,
@@ -627,5 +630,7 @@ AC_OUTPUT(
 	Doxyfile.coding
 	Doxyfile.gb
 	Doxyfile.ctrl
+	Doxyfile.sim
+	Doxyfile.usb
 	Makefile
 	contrib/libosmocore.spec)

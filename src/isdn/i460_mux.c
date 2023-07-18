@@ -23,8 +23,10 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/isdn/i460_mux.h>
 
-/* count the number of sub-channels in this I460 slot */
-static int osmo_i460_subchan_count(struct osmo_i460_timeslot *ts)
+/*! count the number of sub-channels in this I.460 slot.
+ *  \param[in] ts timeslot that holds the I.460 subchannels.
+ *  \return number of subchannels.  */
+int osmo_i460_subchan_count(struct osmo_i460_timeslot *ts)
 {
 	int i, num_used = 0;
 
@@ -119,10 +121,10 @@ static void demux_subchan_extract_bits(struct osmo_i460_subchan *schan, const ui
 	}
 }
 
-/*! Data from E1 timeslot into de-multiplexer
- *  \param[in] ts timeslot state
- *  \param[in] data input data bytes as received from E1/T1
- *  \param[in] data_len length of data in bytes */
+/*! Feed multiplexed data (from an E1 timeslot) into de-multiplexer.
+ *  \param[in] ts timeslot state.
+ *  \param[in] data input data bytes as received from E1/T1.
+ *  \param[in] data_len length of data in bytes. */
 void osmo_i460_demux_in(struct osmo_i460_timeslot *ts, const uint8_t *data, size_t data_len)
 {
 	struct osmo_i460_subchan *schan;
@@ -195,7 +197,7 @@ static ubit_t mux_schan_provide_bit(struct osmo_i460_subchan *schan)
 
 /*! provide one byte with the subchan-specific bits of given sub-channel.
  *  \param[in] schan sub-channel that is to provide bits
- *  \parma[out] mask bitmask of those bits filled in
+ *  \param[out] mask bitmask of those bits filled in
  *  \returns bits of given sub-channel */
 static uint8_t mux_subchan_provide_bits(struct osmo_i460_subchan *schan, uint8_t *mask)
 {
@@ -262,11 +264,10 @@ static uint8_t mux_timeslot_provide_bits(struct osmo_i460_timeslot *ts)
 }
 
 
-/*! Data from E1 timeslot into de-multiplexer
- *  \param[in] ts timeslot state
- *  \param[out] out caller-provided buffer where to store generated output bytes
- *  \param[in] out_len number of bytes to be stored at out
- */
+/*! Get multiplexed data from de-multiplexer (for feeding it into an E1 timeslot).
+ *  \param[in] ts timeslot state.
+ *  \param[out] out caller-provided buffer where to store generated output bytes.
+ *  \param[in] out_len number of bytes to be stored at out. */
 int osmo_i460_mux_out(struct osmo_i460_timeslot *ts, uint8_t *out, size_t out_len)
 {
 	int i;

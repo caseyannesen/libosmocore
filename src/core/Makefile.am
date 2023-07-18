@@ -50,6 +50,8 @@ libosmocore_la_SOURCES = \
 	msgb.c \
 	netdev.c \
 	netns.c \
+	osmo_io.c \
+	osmo_io_poll.c \
 	panic.c \
 	prbs.c \
 	prim.c \
@@ -107,10 +109,18 @@ EXTRA_DIST = \
 	conv_acc_sse_impl.h \
 	conv_acc_neon_impl.h \
 	crcXXgen.c.tpl \
+	osmo_io_internal.h \
 	stat_item_internal.h \
+	libosmocore.map \
 	$(NULL)
 
-libosmocore_la_LDFLAGS = -version-info $(LIBVERSION) -no-undefined
+EXTRA_libosmocore_la_DEPENDENCIES = libosmocore.map
+
+libosmocore_la_LDFLAGS = \
+	$(LTLDFLAGS_OSMOCORE) \
+	-version-info \
+	$(LIBVERSION) \
+	-no-undefined
 
 if ENABLE_PLUGIN
 libosmocore_la_SOURCES += plugin.c

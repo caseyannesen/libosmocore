@@ -22,7 +22,7 @@ struct gsm48_classmark1 {
 		 rev_lev:2,
 		 spare:1;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t spare:1, rev_lev:2, es_ind:1, a5_1:1, pwr_lev:3;
 #endif
 } __attribute__ ((packed));
@@ -51,7 +51,7 @@ struct gsm48_classmark2 {
 		 spare4:1,
 		 cm3:1;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t spare:1, rev_lev:2, es_ind:1, a5_1:1, pwr_lev:3;
 	uint8_t	spare2:1, ps_cap:1, ss_scr:2, sm_cap:1, vbs:1, vgcs:1, fc:1;
 	uint8_t	cm3:1, spare4:1, lcsva_cap:1, spare3:1, solsa:1, cmsp:1, a5_3:1, a5_2:1;
@@ -280,7 +280,7 @@ struct gsm48_range_1024 {
 	uint8_t	w16:6,
 		 w15_lo:2;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t	form_id:5, f0:1, w1_hi:2;
 	uint8_t	w1_lo;
 	uint8_t	w2_hi;
@@ -335,7 +335,7 @@ struct gsm48_range_512 {
 	uint8_t	w17:5,
 		 w16_lo:3;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t	form_id:7, orig_arfcn_hi:1;
 	uint8_t	orig_arfcn_mid;
 	uint8_t	orig_arfcn_lo:1, w1_hi:7;
@@ -396,7 +396,7 @@ struct gsm48_range_256 {
 		 w21:4,
 		 w20_lo:3;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t	form_id:7, orig_arfcn_hi:1;
 	uint8_t	orig_arfcn_mid;
 	uint8_t	orig_arfcn_lo:1, w1_hi:7;
@@ -459,7 +459,7 @@ struct gsm48_range_128 {
 		 w27:3,
 		 w26_lo:1;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t	form_id:7, orig_arfcn_hi:1;
 	uint8_t	orig_arfcn_mid;
 	uint8_t	orig_arfcn_lo:1, w1:7;
@@ -489,7 +489,7 @@ struct gsm48_var_bit {
 		 orig_arfcn_lo:1;
 	uint8_t rrfcn8_111[13];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t	form_id:7, orig_arfcn_hi:1;
 	uint8_t	orig_arfcn_mid;
 	uint8_t	orig_arfcn_lo:1, rrfcn1_7:7;
@@ -509,7 +509,7 @@ struct gsm48_chan_desc {
 			uint8_t hsn:6,
 				 maio_low:2;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 			uint8_t tsc:3, h:1, maio_high:4;
 			uint8_t maio_low:2, hsn:6;
 #endif
@@ -522,7 +522,7 @@ struct gsm48_chan_desc {
 				 tsc:3;
 			uint8_t arfcn_low;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 			uint8_t tsc:3, h:1, spare:2, arfcn_high:2;
 			uint8_t arfcn_low;
 #endif
@@ -573,7 +573,7 @@ struct gsm48_meas_res {
 	uint8_t	bsic_nc6:6,
 		 bcch_f_nc6_lo:2;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t	ba_used:1, dtx_used:1, rxlev_full:6;
 	uint8_t	spare:1, meas_valid:1, rxlev_sub:6;
 	uint8_t	spare2:1, rxqual_full:3, rxqual_sub:3, no_nc_n_hi:1;
@@ -616,7 +616,7 @@ struct gsm48_multi_rate_conf {
 		 m10_2 : 1,
 		 m12_2 : 1;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t ver:3, nscb:1, icmi:1, spare:1, smod:2;
 	uint8_t m12_2:1, m10_2:1, m7_95:1, m7_40:1, m6_70:1, m5_90:1, m5_15:1, m4_75:1;
 #endif
@@ -629,7 +629,7 @@ struct gsm48_power_cmd {
 		 spare:2,
 		 atc:1;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t atc:1, spare:2, power_level:5;
 #endif
 } __attribute__((packed));
@@ -644,7 +644,7 @@ struct gsm48_rach_control {
 	uint8_t t2; /* ACC 8-15 barred flags */
 	uint8_t t3; /* ACC 0-7 barred flags */
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t max_trans:2, tx_integer:4, cell_bar:1, re:1;
 	uint8_t t2;
 	uint8_t t3;
@@ -702,7 +702,7 @@ struct gsm48_req_ref {
 	uint8_t t2:5,
 		 t3_low:3;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t ra;
 	uint8_t t1:5, t3_high:3;
 	uint8_t t3_low:3, t2:5;
@@ -717,7 +717,7 @@ struct gsm48_start_time {
 	uint8_t t2:5,
 		 t3_low:3;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t t1:5, t3_high:3;
 	uint8_t t3_low:3, t2:5;
 #endif
@@ -731,7 +731,7 @@ struct gsm48_sync_ind {
 		 nci:1,
 		 sync_ie:4;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t sync_ie:4, nci:1, rot:1, si:2;
 #endif
 } __attribute__((packed));
@@ -746,18 +746,58 @@ struct gsm48_chan_mode_modify {
 	uint8_t mode;
 } __attribute__ ((packed));
 
+/*! 10.5.2.6 Channel Mode value */
 enum gsm48_chan_mode {
+	/*! Signalling only (TCH/F or TCH/H)  */
 	GSM48_CMODE_SIGN	= 0x00,
+	/*! Speech: FR (TCH/FS) or HR (TCH/HS) */
 	GSM48_CMODE_SPEECH_V1	= 0x01,
-	GSM48_CMODE_SPEECH_EFR	= 0x21,
-	GSM48_CMODE_SPEECH_AMR	= 0x41,
+	/*! Speech: EFR (TCH/EFS) */
+	GSM48_CMODE_SPEECH_EFR	= 0x21, /*!< a.k.a. V2 */
+	/*! Speech: AMR (TCH/AFS or TCH/AHS) */
+	GSM48_CMODE_SPEECH_AMR	= 0x41, /*!< a.k.a. V3 */
+	/*! Speech: OFR AMR-WB (O-TCH/WFS) or OHR AMR-WB (O-TCH/WHS) */
+	GSM48_CMODE_SPEECH_V4	= 0x81,
+	/*! Speech: FR AMR-WB (TCH/WFS) */
+	GSM48_CMODE_SPEECH_V5	= 0x82,
+	/*! Speech: OHR AMR (O-TCH/AHS) */
+	GSM48_CMODE_SPEECH_V6	= 0x83,
+
+	/* ECSD: 43.5 kbit/s (DL) + 14.5 kbit/s (UL) */
+	GSM48_CMODE_DATA_43k5_14k5	= 0x61,
+	/* ECSD: 29.0 kbit/s (DL) + 14.5 kbit/s (UL) */
+	GSM48_CMODE_DATA_29k0_14k5	= 0x62,
+	/* ECSD: 43.5 kbit/s (DL) + 29.0 kbit/s (UL) */
+	GSM48_CMODE_DATA_43k5_29k0	= 0x64,
+	/* ECSD: 14.5 kbit/s (DL) + 43.5 kbit/s (UL) */
+	GSM48_CMODE_DATA_14k5_43k5	= 0x67,
+	/* ECSD: 14.5 kbit/s (DL) + 29.0 kbit/s (UL) */
+	GSM48_CMODE_DATA_14k5_29k0	= 0x65,
+	/* ECSD: 29.0 kbit/s (DL) + 43.5 kbit/s (UL) */
+	GSM48_CMODE_DATA_29k0_43k5	= 0x66,
+
+	/*! ECSD: 43.5 kbit/s radio interface rate, 43.2 kbit/s services (E-TCH/F43.2) */
+	GSM48_CMODE_DATA_43k5	= 0x27,
+	/*! ECSD: 32.0 kbit/s radio interface rate, 32.0 kbit/s services (E-TCH/F32.0) */
+	GSM48_CMODE_DATA_32k0	= 0x63,
+	/*! ECSD: 29.0 kbit/s radio interface rate, 28.8 kbit/s services (E-TCH/F28.8) */
+	GSM48_CMODE_DATA_29k0	= 0x43,
+	/*! CSD: 14.5 kbit/s radio interface rate, 14.4 kbit/s services (TCH/F14.4) */
 	GSM48_CMODE_DATA_14k5	= 0x0f,
+	/*! CSD: 12.0 kbit/s radio interface rate, 9.6 kbit/s services (TCH/F9.6) */
 	GSM48_CMODE_DATA_12k0	= 0x03,
+	/*! CSD: 6.0 kbit/s radio interface rate, 4.8 kbit/s services (TCH/{F,H}4.8) */
 	GSM48_CMODE_DATA_6k0	= 0x0b,
+	/*! CSD: 3.6 kbit/s radio interface rate, 2.4 kbit/s and less services (TCH/{F,H}2.4) */
 	GSM48_CMODE_DATA_3k6	= 0x13,
+
+	/*! Same as GSM48_CMODE_SPEECH_V1, in VAMOS mode */
 	GSM48_CMODE_SPEECH_V1_VAMOS	= 0xc1,
+	/*! Same as GSM48_CMODE_SPEECH_EFR, in VAMOS mode */
 	GSM48_CMODE_SPEECH_V2_VAMOS	= 0xc2,
+	/*! Same as GSM48_CMODE_SPEECH_AMR, in VAMOS mode */
 	GSM48_CMODE_SPEECH_V3_VAMOS	= 0xc3,
+	/*! Speech: GSM48_CMODE_SPEECH_V5, in VAMOS mode */
 	GSM48_CMODE_SPEECH_V5_VAMOS	= 0xc5,
 };
 
@@ -797,7 +837,7 @@ struct gsm48_cell_desc {
 		 arfcn_hi:2;
 	uint8_t arfcn_lo;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t arfcn_hi:2, ncc:3, bcc:3;
 	uint8_t arfcn_lo;
 #endif
@@ -840,7 +880,7 @@ struct gsm48_pag_resp {
 	uint8_t mi_len;
 	uint8_t mi[0];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t key_seq:4, spare:4;
 	union {
 		uint32_t classmark2;
@@ -867,7 +907,7 @@ struct gsm48_auth_req {
 	         spare:4;
 	uint8_t rand[16];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t spare:4, key_seq:4;
 	uint8_t rand[16];
 #endif
@@ -888,7 +928,7 @@ struct gsm48_loc_upd_req {
 	uint8_t mi_len;
 	uint8_t mi[0];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t key_seq:4, type:4;
 	struct gsm48_loc_area_id lai;
 	struct gsm48_classmark1 classmark1;
@@ -904,6 +944,20 @@ struct gsm48_hdr {
 	uint8_t data[0];
 } __attribute__ ((packed));
 
+/* Short header */
+struct gsm48_hdr_sh {
+#if OSMO_IS_LITTLE_ENDIAN
+	uint8_t	l2_header:2,	/* < short layer 2 header : bit(2) > See 3GPP TS 44.006 §6.4a */
+		msg_type:5,	/* < message type : bit(5) > See 3GPP TS 44.018 Table 10.4.2 */
+		rr_short_pd:1;	/* < RR short PD : bit > See 3GPP TS 24.007 §11.3.2 */
+	uint8_t data[0];
+#elif OSMO_IS_BIG_ENDIAN
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
+	uint8_t	rr_short_pd:1, msg_type:5, l2_header:2;
+	uint8_t data[0];
+#endif
+} __attribute__ ((packed));
+
 /* Section 9.1.3x System information Type header */
 struct gsm48_system_information_type_header {
 #if OSMO_IS_LITTLE_ENDIAN
@@ -912,7 +966,7 @@ struct gsm48_system_information_type_header {
 		skip_indicator:4;
 	uint8_t system_information;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t l2_plen;
 	uint8_t skip_indicator:4, rr_protocol_discriminator:4;
 	uint8_t system_information;
@@ -928,7 +982,7 @@ struct gsm48_cell_sel_par {
 		 neci:1,
 		 acs:1;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t cell_resel_hyst:3, ms_txpwr_max_ccch:5;
 	uint8_t acs:1, neci:1, rxlev_acc_min:6;
 #endif
@@ -947,7 +1001,7 @@ struct gsm48_control_channel_descr {
 		spare_2 :1;
 	uint8_t t3212;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t mscr:1, att:1, bs_ag_blks_res:3, ccch_conf:3;
 	uint8_t spare_2:1, cbq3:2, spare_1:2, bs_pa_mfrms:3;
 	uint8_t t3212;
@@ -970,7 +1024,7 @@ struct gsm48_cell_options {
 	/* either DN-IND or top bit of DTX IND */
 		 d:1;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t d:1, pwrc:1, dtx:2, radio_link_timeout:4;
 #endif
 } __attribute__ ((packed));
@@ -991,7 +1045,7 @@ struct gsm48_service_request {
 	uint8_t mi[0];
 	/* optional priority level */
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t cipher_key_seq:4, cm_service_type:4;
 	union {
 		uint32_t classmark;
@@ -1074,7 +1128,7 @@ struct gsm48_system_information_type_5 {
 	uint8_t system_information;
 	uint8_t bcch_frequency_list[16];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t skip_indicator:4, rr_protocol_discriminator:4;
 	uint8_t system_information;
 	uint8_t bcch_frequency_list[16];
@@ -1089,7 +1143,7 @@ struct gsm48_system_information_type_5bis {
 	uint8_t system_information;
 	uint8_t bcch_frequency_list[16];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
         uint8_t skip_indicator:4, rr_protocol_discriminator:4;
 	uint8_t system_information;
 	uint8_t bcch_frequency_list[16];
@@ -1104,7 +1158,7 @@ struct gsm48_system_information_type_5ter {
 	uint8_t system_information;
 	uint8_t bcch_frequency_list[16];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
         uint8_t skip_indicator:4, rr_protocol_discriminator:4;
 	uint8_t system_information;
 	uint8_t bcch_frequency_list[16];
@@ -1123,7 +1177,7 @@ struct gsm48_system_information_type_6 {
 	uint8_t ncc_permitted;
 	uint8_t rest_octets[0];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t skip_indicator:4, rr_protocol_discriminator:4;
 	uint8_t system_information;
 	uint16_t cell_identity;
@@ -1137,15 +1191,22 @@ struct gsm48_system_information_type_6 {
 /* Section 9.1.50 System Information type 10 (ASCI) */
 struct gsm48_system_information_type_10 {
 #if OSMO_IS_LITTLE_ENDIAN
-	uint8_t rr_short_pd:1,	/* < RR short PD : bit > See 3GPP TS 24.007 §11.3.2 */
+	uint8_t	l2_header:2,	/* < short layer 2 header : bit(2) > See 3GPP TS 44.006 §6.4a */
 		msg_type:5,	/* < message type : bit(5) > See 3GPP TS 44.018 Table 10.4.2 */
-		l2_header:2;	/* < short layer 2 header : bit(2) > See 3GPP TS 44.006 §6.4a */
+		rr_short_pd:1;	/* < RR short PD : bit > See 3GPP TS 24.007 §11.3.2 */
 	uint8_t rest_octets[0];	/* < SI10 Rest Octets : bit(160) > See 3GPP TS 44.018 §10.5.2.44 */
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
-	uint8_t l2_header:2, msg_type:5, rr_short_pd:1;
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
+	uint8_t	rr_short_pd:1, msg_type:5, l2_header:2;
 	uint8_t rest_octets[0];
 #endif
+} __attribute__ ((packed));
+
+/* TS 44.018 Section 9.1.49 */
+struct gsm0408_vgcs_ul_grant {
+	struct gsm48_hdr hdr;
+	struct gsm48_req_ref req_ref;
+	uint8_t ta;
 } __attribute__ ((packed));
 
 /* Section 9.1.43a System Information type 13 */
@@ -1203,7 +1264,7 @@ struct gsm48_cip_mode_cmd {
 		 cr:1,
 		 spare:3;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t spare:3, cr:1, alg_id:3, sc:1;
 #endif
 } __attribute__((packed));
@@ -1248,6 +1309,14 @@ struct gsm48_imm_ass_rej {
 	uint8_t rest[0];
 } __attribute__ ((packed));
 
+/* Section 9.1.21b */
+struct gsm48_notification_nch {
+	uint8_t l2_plen;
+	uint8_t proto_discr;
+	uint8_t msg_type;
+	uint8_t data[0];
+} __attribute__((packed));
+
 /* Section 9.1.22 */
 struct gsm48_paging1 {
 #if OSMO_IS_LITTLE_ENDIAN
@@ -1260,7 +1329,7 @@ struct gsm48_paging1 {
 		 cneed2:2;
 	uint8_t data[0];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t l2_plen;
 	uint8_t proto_discr;
 	uint8_t msg_type;
@@ -1283,7 +1352,7 @@ struct gsm48_paging2 {
 	uint32_t tmsi2;
 	uint8_t data[0];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t l2_plen;
 	uint8_t proto_discr;
 	uint8_t msg_type;
@@ -1313,7 +1382,7 @@ struct gsm48_paging3 {
 		 spare2:4;
 	uint8_t rest[0];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t l2_plen;
 	uint8_t proto_discr;
 	uint8_t msg_type;
@@ -1336,7 +1405,7 @@ struct gsm48_pag_rsp {
 	struct gsm48_classmark2 cm2;
 	uint8_t data[0];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t spare:5, key_seq:3;
 	uint8_t cm2_len;
 	struct gsm48_classmark2 cm2;
@@ -1366,6 +1435,9 @@ struct gsm48_rr_status {
 #define GSM48_PDISC_EXTEND	0x0e
 #define GSM48_PDISC_TEST	0x0f	/* as per 11.10, 04.14 */
 #define GSM48_PDISC_MASK	0x0f
+
+/* Section 11.3.2.1 3GPP TS 24.007: Short PDISC */
+#define GSM48_PDISC_SH_RR	0
 
 extern const struct value_string gsm48_pdisc_names[];
 static inline const char *gsm48_pdisc_name(uint8_t val)
@@ -1734,6 +1806,10 @@ static inline const char *osmo_lu_type_name(uint8_t lu_type)
 #define GSM48_IE_FRQSHORT_AFTER	0x02
 #define GSM48_IE_MUL_RATE_CFG	0x03	/* 10.5.2.21aa */
 #define GSM48_IE_FREQ_L_AFTER	0x05
+#define GSM48_IE_GROUP_CIP_SEQ_HO 0x08 /* HO = Half Octet Tag */
+#define GSM48_IE_CIP_MODE_SET_HO 0x09 /* HO = Half Octet Tag */
+#define GSM48_IE_GPRS_RESUMPT_HO 0xc0 /* HO = Half Octet Tag */
+#define GSM48_IE_SYNC_IND_HO	0x0d /* HO = Half Octet Tag */
 #define GSM48_IE_MSLOT_DESC	0x10
 #define GSM48_IE_CHANMODE_2	0x11
 #define GSM48_IE_FRQSHORT_BEFORE 0x12
@@ -1775,20 +1851,21 @@ static inline const char *osmo_lu_type_name(uint8_t lu_type)
 #define GSM48_IE_START_TIME	0x7c
 #define GSM48_IE_INDIVIDUAL_PRIORITIES 0x7c /* 44.018 Section 9.1.7 */
 #define GSM48_IE_TIMING_ADVANCE	0x7d
-#define GSM48_IE_GROUP_CIP_SEQ	0x80
-#define GSM48_IE_CIP_MODE_SET	0x90
-#define GSM48_IE_GPRS_RESUMPT	0xc0
-#define GSM48_IE_SYNC_IND	0xd0
+#define GSM48_IE_GROUP_CIP_SEQ 0x80 /* DEPRECATED, use GSM48_IE_GROUP_CIP_SEQ_HO instead */
+#define GSM48_IE_CIP_MODE_SET  0x90  /* DEPRECATED, use GSM48_IE_CIP_MODE_SET_HO instead */
+#define GSM48_IE_GPRS_RESUMPT  0xc0 /* DEPRECATED, use GSM48_IE_GPRS_RESUMPT_HO instead */
+#define GSM48_IE_SYNC_IND      0xd0 /* DEPRECATED, use GSM48_IE_SYNC_IND_HO instead */
 /* System Information 4 (types are equal IEs above) */
 #define GSM48_IE_CBCH_CHAN_DESC	0x64
 #define GSM48_IE_CBCH_MOB_AL	0x72
 
 /* Additional MM elements */
+#define GSM48_IE_PRIORITY_LEV_HO 0x08 /* HO = Half Octet Tag */
 #define GSM48_IE_LOCATION_AREA	0x13
 #define GSM48_IE_AUTN		0x20
 #define GSM48_IE_AUTH_RES_EXT	0x21
 #define GSM48_IE_AUTS		0x22
-#define GSM48_IE_PRIORITY_LEV	0x80
+#define GSM48_IE_PRIORITY_LEV	0x80 /* DEPRECATED, use GSM48_IE_PRIORITY_LEV_HO instead */
 #define GSM48_IE_FOLLOW_ON_PROC	0xa1
 #define GSM48_IE_CTS_PERMISSION	0xa2
 

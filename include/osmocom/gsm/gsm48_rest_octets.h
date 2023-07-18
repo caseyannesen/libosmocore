@@ -2,7 +2,7 @@
 
 #include <stdbool.h>
 #include <osmocom/gsm/sysinfo.h>
-#include <osmocom/gprs/protocol/gsm_04_60.h>
+#include <osmocom/gsm/protocol/gsm_44_060.h>
 
 /* 16 is the max. number of SI2quater messages according to 3GPP TS 44.018 Table 10.5.2.33b.1:
    4-bit index is used (2#1111 = 10#15) */
@@ -13,6 +13,9 @@
 
 /* generate SI1 rest octets */
 int osmo_gsm48_rest_octets_si1_encode(uint8_t *data, uint8_t *nch_pos, int is1800_net);
+int osmo_gsm48_si1ro_nch_pos_decode(uint8_t value, uint8_t *num_blocks, uint8_t *first_block);
+int osmo_gsm48_si1ro_nch_pos_encode(uint8_t num_blocks, uint8_t first_block);
+
 int osmo_gsm48_rest_octets_si2quater_encode(uint8_t *data, uint8_t si2q_index, uint8_t si2q_count,
 					    const uint16_t *uarfcn_list, size_t *u_offset,
 					    size_t uarfcn_length, uint16_t *scramble_list,

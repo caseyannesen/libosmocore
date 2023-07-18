@@ -126,7 +126,7 @@ struct abis_rsl_osmo_rep_acch_cap {
 		rxqual:3,
 		reserved:1;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t reserved:1, rxqual:3, ul_sacch:1, dl_sacch:1, dl_facch_all:1, dl_facch_cmd:1;
 #endif
 } __attribute__ ((packed));
@@ -139,7 +139,7 @@ struct abis_rsl_osmo_temp_ovp_acch_cap {
 		facch_enable:1,
 		sacch_enable:1;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t sacch_enable:1, facch_enable:1, rxqual:3, overpower_db:3;
 #endif
 } __attribute__ ((packed));
@@ -496,51 +496,66 @@ enum rsl_cmod_spd {
 	RSL_CMOD_SPD_DATA	= 0x02,
 	RSL_CMOD_SPD_SIGN	= 0x03,
 };
-#define RSL_CMOD_CRT_SDCCH		0x01
-#define RSL_CMOD_CRT_TCH_Bm		0x08	/* full-rate */
-#define RSL_CMOD_CRT_TCH_Lm		0x09	/* half-rate */
-#define RSL_CMOD_CRT_TCH_BI_Bm		0x0a	/* full-rate: bi-directional (multislot) */
-#define RSL_CMOD_CRT_TCH_UNI_Bm		0x1a	/* full-rate: uni-directional (multislot) */
-#define RSL_CMOD_CRT_TCH_GROUP_Bm	0x18	/* full-rate: group call channel */
-#define RSL_CMOD_CRT_TCH_GROUP_Lm	0x19	/* half-rate: group call channel */
-#define RSL_CMOD_CRT_TCH_BCAST_Bm	0x28	/* full-rate: broadcast call channel */
-#define RSL_CMOD_CRT_TCH_BCAST_Lm	0x29	/* half-rate: broadcast call channel */
-#define RSL_CMOD_CRT_OSMO_TCH_VAMOS_Bm	0x88	/* full-rate in VAMOS mode */
-#define RSL_CMOD_CRT_OSMO_TCH_VAMOS_Lm	0x89	/* half-rate in VAMOS mode */
-/* Speech */
-#define RSL_CMOD_SP_GSM1	0x01
-#define RSL_CMOD_SP_GSM2	0x11
-#define RSL_CMOD_SP_GSM3	0x21
-#define RSL_CMOD_SP_GSM4	0x31
-#define RSL_CMOD_SP_GSM5	0x09
-#define RSL_CMOD_SP_GSM6	0x0d
-/* non-transparent data (asymmetric) */
-#define RSL_CMOD_CSD_NTA_43k5_14k5	0x61	/* asymmetric 43.5 kbit/s (DL) + 14.5 kbit/s (UL) */
-#define RSL_CMOD_CSD_NTA_29k0_14k5	0x62	/* asymmetric 29.0 kbit/s (DL) + 14.5 kbit/s (UL) */
-#define RSL_CMOD_CSD_NTA_43k5_29k0	0x63	/* asymmetric 43.5 kbit/s (DL) + 29.0 kbit/s (UL) */
-#define RSL_CMOD_CSD_NTA_14k5_43k5	0x69	/* asymmetric 14.5 kbit/s (DL) + 43.5 kbit/s (UL) */
-#define RSL_CMOD_CSD_NTA_14k5_29k0	0x6a	/* asymmetric 14.5 kbit/s (DL) + 29.0 kbit/s (UL) */
-#define RSL_CMOD_CSD_NTA_29k0_43k5	0x6b	/* asymmetric 29.0 kbit/s (DL) + 43.5 kbit/s (UL) */
-/* non-transparent data */
-#define RSL_CMOD_CSD_NT_43k5	0x74
-#define RSL_CMOD_CSD_NT_28k8	0x71
-#define RSL_CMOD_CSD_NT_14k5	0x58
-#define RSL_CMOD_CSD_NT_12k0	0x50
-#define RSL_CMOD_CSD_NT_6k0	0x51
+/*! Channel rate and type */
+enum rsl_cmod_crt {
+	RSL_CMOD_CRT_SDCCH		= 0x01,
+	RSL_CMOD_CRT_TCH_Bm		= 0x08,	/* full-rate */
+	RSL_CMOD_CRT_TCH_Lm		= 0x09,	/* half-rate */
+	RSL_CMOD_CRT_TCH_BI_Bm		= 0x0a,	/* full-rate: bi-directional (multislot) */
+	RSL_CMOD_CRT_TCH_UNI_Bm		= 0x1a,	/* full-rate: uni-directional (multislot) */
+	RSL_CMOD_CRT_TCH_GROUP_Bm	= 0x18,	/* full-rate: group call channel */
+	RSL_CMOD_CRT_TCH_GROUP_Lm	= 0x19,	/* half-rate: group call channel */
+	RSL_CMOD_CRT_TCH_BCAST_Bm	= 0x28,	/* full-rate: broadcast call channel */
+	RSL_CMOD_CRT_TCH_BCAST_Lm	= 0x29,	/* half-rate: broadcast call channel */
+	RSL_CMOD_CRT_OSMO_TCH_VAMOS_Bm	= 0x88,	/* full-rate in VAMOS mode */
+	RSL_CMOD_CRT_OSMO_TCH_VAMOS_Lm	= 0x89,	/* half-rate in VAMOS mode */
+};
+/*! Speech */
+enum rsl_cmod_sp {
+	RSL_CMOD_SP_GSM1	= 0x01,
+	RSL_CMOD_SP_GSM2	= 0x11,
+	RSL_CMOD_SP_GSM3	= 0x21,
+	RSL_CMOD_SP_GSM4	= 0x31,
+	RSL_CMOD_SP_GSM5	= 0x09,
+	RSL_CMOD_SP_GSM6	= 0x0d,
+};
+/*! Non-transparent data */
+enum rsl_cmod_csd_nt {
+	RSL_CMOD_CSD_NTA_43k5_14k5	= 0x61,	/* asymmetric 43.5 kbit/s (DL) + 14.5 kbit/s (UL) */
+	RSL_CMOD_CSD_NTA_29k0_14k5	= 0x62,	/* asymmetric 29.0 kbit/s (DL) + 14.5 kbit/s (UL) */
+	RSL_CMOD_CSD_NTA_43k5_29k0	= 0x63,	/* asymmetric 43.5 kbit/s (DL) + 29.0 kbit/s (UL) */
+	RSL_CMOD_CSD_NTA_14k5_43k5	= 0x69,	/* asymmetric 14.5 kbit/s (DL) + 43.5 kbit/s (UL) */
+	RSL_CMOD_CSD_NTA_14k5_29k0	= 0x6a,	/* asymmetric 14.5 kbit/s (DL) + 29.0 kbit/s (UL) */
+	RSL_CMOD_CSD_NTA_29k0_43k5	= 0x6b,	/* asymmetric 29.0 kbit/s (DL) + 43.5 kbit/s (UL) */
+	RSL_CMOD_CSD_NT_43k5		= 0x74,
+	RSL_CMOD_CSD_NT_28k8		= 0x71,
+	RSL_CMOD_CSD_NT_14k5		= 0x58,
+	RSL_CMOD_CSD_NT_12k0		= 0x50,
+	RSL_CMOD_CSD_NT_6k0		= 0x51,
+};
 /* legacy #defines with wrong name */
 #define RSL_CMOD_SP_NT_14k5	RSL_CMOD_CSD_NT_14k5
 #define RSL_CMOD_SP_NT_12k0	RSL_CMOD_CSD_NT_12k0
 #define RSL_CMOD_SP_NT_6k0	RSL_CMOD_CSD_NT_6k0
-/* transparent data */
-#define RSL_CMOD_CSD_T_32000	0x38
-#define RSL_CMOD_CSD_T_29000	0x39
-#define RSL_CMOD_CSD_T_14400	0x18
-#define RSL_CMOD_CSD_T_9600	0x10
-#define RSL_CMOD_CSD_T_4800	0x11
-#define RSL_CMOD_CSD_T_2400	0x12
-#define RSL_CMOD_CSD_T_1200	0x13
-#define RSL_CMOD_CSD_T_600	0x14
-#define RSL_CMOD_CSD_T_1200_75	0x15
+#define RSL_CMOD_CSD_T_32000	RSL_CMOD_CSD_T_32k0
+#define RSL_CMOD_CSD_T_29000	RSL_CMOD_CSD_T_29k0
+#define RSL_CMOD_CSD_T_14400	RSL_CMOD_CSD_T_14k4
+#define RSL_CMOD_CSD_T_9600	RSL_CMOD_CSD_T_9k6
+#define RSL_CMOD_CSD_T_4800	RSL_CMOD_CSD_T_4k8
+#define RSL_CMOD_CSD_T_2400	RSL_CMOD_CSD_T_2k4
+#define RSL_CMOD_CSD_T_1200	RSL_CMOD_CSD_T_1k2
+/*! Transparent data */
+enum rsl_cmod_csd_t {
+	RSL_CMOD_CSD_T_32k0	= 0x38,
+	RSL_CMOD_CSD_T_29k0	= 0x39,
+	RSL_CMOD_CSD_T_14k4	= 0x18,
+	RSL_CMOD_CSD_T_9k6	= 0x10,
+	RSL_CMOD_CSD_T_4k8	= 0x11,
+	RSL_CMOD_CSD_T_2k4	= 0x12,
+	RSL_CMOD_CSD_T_1k2	= 0x13,
+	RSL_CMOD_CSD_T_600	= 0x14,
+	RSL_CMOD_CSD_T_1200_75	= 0x15,
+};
 
 /*! RSL Channel Identification IE (Chapter 9.3.5) */
 struct rsl_ie_chan_ident {
@@ -658,7 +673,7 @@ struct rsl_ie_chan_ident {
 #define RSL_CHANNEED_TCH_F	0x02
 #define RSL_CHANNEED_TCH_ForH	0x03
 
-/*! RSL Cell Broadcast Command (Chapter 9.3.45) */
+/*! RSL Cell Broadcast Command (Chapter 9.3.41) */
 struct rsl_ie_cb_cmd_type {
 #if OSMO_IS_LITTLE_ENDIAN
 	uint8_t last_block:2;
@@ -666,7 +681,7 @@ struct rsl_ie_cb_cmd_type {
 	uint8_t def_bcast:1;
 	uint8_t command:4;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t command:4, def_bcast:1, spare:1, last_block:2;
 #endif
 } __attribute__ ((packed));
@@ -683,6 +698,23 @@ struct rsl_ie_cb_cmd_type {
 #define RSL_CB_CMD_LASTBLOCK_1		1
 #define RSL_CB_CMD_LASTBLOCK_2		2
 #define RSL_CB_CMD_LASTBLOCK_3		3
+
+/*! NCH DRX Information (Chapter 9.3.47) */
+struct rsl_ie_nch_drx_info {
+#if OSMO_IS_LITTLE_ENDIAN
+	uint8_t nln:2;
+	uint8_t emlpp_priority:3;
+	uint8_t nln_status:1;
+	uint8_t spare:2;
+#elif OSMO_IS_BIG_ENDIAN
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
+	uint8_t spare:2, nln_status:1, emlpp_priority:3, nln:2;
+#endif
+} __attribute__ ((packed));
+
+/*! Command Indicator (Chapter 9.3.48) */
+#define RSL_CMD_INDICATOR_START	0x00
+#define RSL_CMD_INDICATOR_STOP	0x01
 
 /* Chapter 3.3.2.3 Brocast control channel */
 /* CCCH-CONF, NC is not combined */
@@ -729,10 +761,10 @@ enum rsl_ipac_speech_mode_m {
 
 /* RSL_IE_IPAC_RTP_CSD_FMT, lower four bits */
 enum rsl_ipac_rtp_csd_format_d {
-	RSL_IPAC_RTP_CSD_EXT_TRAU = 0,
-	RSL_IPAC_RTP_CSD_NON_TRAU = 1,
-	RSL_IPAC_RTP_CSD_TRAU_BTS = 2,
-	RSL_IPAC_RTP_CSD_IWF_FREE = 3,
+	RSL_IPAC_RTP_CSD_EXT_TRAU = 0,	/*!< TRAU-like RTP format, without leading zero-bits */
+	RSL_IPAC_RTP_CSD_NON_TRAU = 1,	/*!< packed 16k (252/288 bit) / 8k (126 bit) in RTP */
+	RSL_IPAC_RTP_CSD_TRAU_BTS = 2,	/*!< TRAU in BTS; V.110 in RTP/CLEARMODE */
+	RSL_IPAC_RTP_CSD_IWF_FREE = 3,	/*!< unknown proprietary IWF-free BTS-BTS data */
 };
 /* RSL_IE_IPAC_RTP_CSD_FMT, upper four bits */
 enum rsl_ipac_rtp_csd_format_ir {
@@ -817,7 +849,7 @@ struct ipac_preproc_ave_cfg {
 		ave_method:3;
 	uint8_t params[0];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t reserved:1, param_id:2, h_reqave:5;
 	uint8_t ave_method:3, h_reqt:5;
 	uint8_t params[0];
@@ -833,7 +865,7 @@ struct osmo_preproc_ave_cfg_field {
 	uint8_t h_reqt:5,
 		ave_method:3;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t reserved:2, ave_enabled:1, h_reqave:5;
 	uint8_t ave_method:3, h_reqt:5;
 #endif
@@ -857,7 +889,7 @@ struct ipac_preproc_pc_thresh {
 	uint8_t u_rxqual:3, reserved_u_rxqual:1,
 		l_rxqual:3, reserved_l_rxqual:1;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t reserved_l_rxlev:2, l_rxlev:6;
 	uint8_t reserved_u_rxlev:2, u_rxlev:6;
 	uint8_t reserved_l_rxqual:1, l_rxqual:3, reserved_u_rxqual:1, u_rxqual:3;
@@ -893,7 +925,7 @@ struct ipac_preproc_ho_thresh {
 	uint8_t ms_range_max:6,
 		reserved_ms_range:2;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t reserved_l_rxlev_ul:2, l_rxlev_ul_h:6;
 	uint8_t reserved_l_rxlev_dl:2, l_rxlev_dl_h:6;
 	uint8_t reserved_rxlev_ul:2, rxlev_ul_ih:6;
@@ -917,7 +949,7 @@ struct ipac_preproc_pc_comp {
 	uint8_t pc_interval:5, reserved_pc:3;
 	uint8_t red_step_size:4, inc_step_size:4;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t reserved_p1:3, p1:5;
 	uint8_t reserved_n1:3, n1:5;
 	uint8_t reserved_p2:3, p2:5;
@@ -939,7 +971,7 @@ struct ipac_preproc_pc_comp_field {
 	uint8_t upper_p:5, reserved_upper_p:3;
 	uint8_t upper_n:5, reserved_upper_n:3;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t reserved_lower_p:3, lower_p:5;
 	uint8_t reserved_lower_n:3, lower_n:5;
 	uint8_t reserved_upper_p:3, upper_p:5;
@@ -980,7 +1012,7 @@ struct ipac_preproc_ho_comp {
 	uint8_t reserved;
 
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t reserved_p5:3, p5:5;
 	uint8_t reserved_n5:3, n5:5;
 	uint8_t reserved_p6:3, p6:5;
@@ -1003,7 +1035,7 @@ struct ipac_preproc_ho_candidates {
 		s:1,
 		reserved1:1;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t reserved0:2, bsic:6;
 	uint8_t reserved1:1, s:1, ba_used:1, bcch_freq:5;
 #endif
@@ -1018,7 +1050,7 @@ struct ipac_preproc_ncell_dflts {
 	uint8_t ms_txpwr_max_def:5,
 		reserved_ms_txpwr_max_def:3;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t reserved_rxlev_min_def:2, rxlev_min_def:6;
 	uint8_t reserved_ho_margin_def:3, ho_margin_def:5;
 	uint8_t reserved_ms_txpwr_max_def:3, ms_txpwr_max_def:5;
@@ -1031,7 +1063,7 @@ struct ipac_preproc_ho_ctl_param {
 		sdcch_ho_umts:1,
 		reserved:6;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t reserved:6, sdcch_ho_umts:1, sdcch_ho_gsm:1;
 #endif
 }__attribute__ ((packed));
@@ -1055,7 +1087,7 @@ struct rsl_l1_info {
 			ms_pwr:5;
 		uint8_t ta;
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 		uint8_t ms_pwr:5, fpc_epc:1, srr_sro:1, reserved:1;
 		uint8_t ta;
 #endif

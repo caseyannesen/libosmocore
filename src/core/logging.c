@@ -314,6 +314,12 @@ static const struct log_info_cat internal_cat[OSMO_NUM_DLIB] = {
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 		.color = "\033[38;5;11m",
 	},
+	[INT2IDX(DLIO)] = {
+		.name = "DLIO",
+		.description = "libosmocore IO Subsystem",
+		.enabled = 1, .loglevel = LOGL_NOTICE,
+		.color = "\033[38;5;67m",
+	},
 };
 
 void assert_loginfo(const char *src)
@@ -1159,6 +1165,7 @@ int log_target_file_switch_to_stream(struct log_target *target)
 	if (target->type == LOG_TGT_TYPE_FILE) {
 		osmo_fd_unregister(&wq->bfd);
 		close(wq->bfd.fd);
+		wq->bfd.fd = -1;
 	}
 
 	/* release the queue itself */
@@ -1326,11 +1333,11 @@ void log_target_destroy(struct log_target *target)
 		wq = target->tgt_file.wqueue;
 		if (wq) {
 			if (wq->bfd.fd >= 0) {
+				osmo_fd_unregister(&wq->bfd);
 				if (target->type == LOG_TGT_TYPE_FILE)
 					close(wq->bfd.fd);
 				wq->bfd.fd = -1;
 			}
-			osmo_fd_unregister(&wq->bfd);
 			osmo_wqueue_clear(wq);
 			talloc_free(wq);
 			target->tgt_file.wqueue = NULL;
@@ -1373,8 +1380,8 @@ int log_target_file_reopen(struct log_target *target)
 			return -errno;
 	} else {
 		wq = target->tgt_file.wqueue;
-		osmo_fd_unregister(&wq->bfd);
 		if (wq->bfd.fd >= 0) {
+			osmo_fd_unregister(&wq->bfd);
 			close(wq->bfd.fd);
 			wq->bfd.fd = -1;
 		}

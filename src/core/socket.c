@@ -249,7 +249,7 @@ static int osmo_sock_init_tail(int fd, uint16_t type, unsigned int flags)
 			if (rc < 0) {
 				LOGP(DLGLOBAL, LOGL_ERROR, "unable to listen on socket: %s\n",
 					strerror(errno));
-				return rc;
+				return -errno;
 			}
 			break;
 		}
@@ -561,19 +561,21 @@ int osmo_sock_init_osa(uint16_t type, uint8_t proto,
 			rc = setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR,
 					&on, sizeof(on));
 			if (rc < 0) {
+				int err = errno;
 				_SOCKADDR_TO_STR(sastr, local);
 				LOGP(DLGLOBAL, LOGL_ERROR,
 				     "cannot setsockopt socket: " OSMO_SOCKADDR_STR_FMT ": %s\n",
-				     OSMO_SOCKADDR_STR_FMT_ARGS(sastr), strerror(errno));
+				     OSMO_SOCKADDR_STR_FMT_ARGS(sastr), strerror(err));
 				close(sfd);
 				return rc;
 			}
 		}
 
 		if (bind(sfd, &local->u.sa, sizeof(struct osmo_sockaddr)) == -1) {
+			int err = errno;
 			_SOCKADDR_TO_STR(sastr, local);
 			LOGP(DLGLOBAL, LOGL_ERROR, "unable to bind socket: " OSMO_SOCKADDR_STR_FMT ": %s\n",
-				     OSMO_SOCKADDR_STR_FMT_ARGS(sastr), strerror(errno));
+				     OSMO_SOCKADDR_STR_FMT_ARGS(sastr), strerror(err));
 			close(sfd);
 			return -1;
 		}
@@ -594,9 +596,10 @@ int osmo_sock_init_osa(uint16_t type, uint8_t proto,
 
 		rc = connect(sfd, &remote->u.sa, sizeof(struct osmo_sockaddr));
 		if (rc != 0 && errno != EINPROGRESS) {
+			int err = errno;
 			_SOCKADDR_TO_STR(sastr, remote);
 			LOGP(DLGLOBAL, LOGL_ERROR, "unable to connect socket: " OSMO_SOCKADDR_STR_FMT ": %s\n",
-			     OSMO_SOCKADDR_STR_FMT_ARGS(sastr), strerror(errno));
+			     OSMO_SOCKADDR_STR_FMT_ARGS(sastr), strerror(err));
 			close(sfd);
 			return rc;
 		}
@@ -776,7 +779,11 @@ int osmo_sock_init2_multiaddr(uint16_t family, uint16_t type, uint8_t proto,
 	if (((flags & OSMO_SOCK_F_BIND) && (flags & OSMO_SOCK_F_CONNECT)) &&
 	    !addrinfo_has_in6addr_any((const struct addrinfo **)res_loc, local_hosts_cnt) &&
 	    (loc_has_v4addr != rem_has_v4addr || loc_has_v6addr != rem_has_v6addr)) {
-		LOGP(DLGLOBAL, LOGL_ERROR, "Invalid v4 vs v6 in local vs remote addresses\n");
+		LOGP(DLGLOBAL, LOGL_ERROR, "Invalid v4 vs v6 in local vs remote addresses: "
+		     "local:%s%s remote:%s%s\n",
+		     loc_has_v4addr ? " v4" : "", loc_has_v6addr ? " v6" : "",
+		     rem_has_v4addr ? " v4" : "", rem_has_v6addr ? " v6" : ""
+		     );
 		rc = -EINVAL;
 		goto ret_freeaddrinfo;
 	}
@@ -794,12 +801,13 @@ int osmo_sock_init2_multiaddr(uint16_t family, uint16_t type, uint8_t proto,
 		rc = setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR,
 				&on, sizeof(on));
 		if (rc < 0) {
+			int err = errno;
 			multiaddr_snprintf(strbuf, sizeof(strbuf), local_hosts, local_hosts_cnt);
 			LOGP(DLGLOBAL, LOGL_ERROR,
 			     "cannot setsockopt socket:"
 			     " %s:%u: %s\n",
 			     strbuf, local_port,
-			     strerror(errno));
+			     strerror(err));
 			goto ret_close;
 		}
 
@@ -817,9 +825,10 @@ int osmo_sock_init2_multiaddr(uint16_t family, uint16_t type, uint8_t proto,
 
 		rc = sctp_bindx(sfd, (struct sockaddr *)addrs_buf, local_hosts_cnt, SCTP_BINDX_ADD_ADDR);
 		if (rc == -1) {
+			int err = errno;
 			multiaddr_snprintf(strbuf, sizeof(strbuf), local_hosts, local_hosts_cnt);
 			LOGP(DLGLOBAL, LOGL_NOTICE, "unable to bind socket: %s:%u: %s\n",
-			     strbuf, local_port, strerror(errno));
+			     strbuf, local_port, strerror(err));
 			rc = -ENODEV;
 			goto ret_close;
 		}
@@ -839,9 +848,10 @@ int osmo_sock_init2_multiaddr(uint16_t family, uint16_t type, uint8_t proto,
 
 		rc = sctp_connectx(sfd, (struct sockaddr *)addrs_buf, remote_hosts_cnt, NULL);
 		if (rc != 0 && errno != EINPROGRESS) {
+			int err = errno;
 			multiaddr_snprintf(strbuf, sizeof(strbuf), remote_hosts, remote_hosts_cnt);
 			LOGP(DLGLOBAL, LOGL_ERROR, "unable to connect socket: %s:%u: %s\n",
-				strbuf, remote_port, strerror(errno));
+				strbuf, remote_port, strerror(err));
 			rc = -ENODEV;
 			goto ret_close;
 		}
@@ -1393,7 +1403,7 @@ int osmo_sock_unix_init(uint16_t type, uint8_t proto,
 
 	sfd = socket(AF_UNIX, type, proto);
 	if (sfd < 0)
-		return -1;
+		return -errno;
 
 	if (flags & OSMO_SOCK_F_CONNECT) {
 		rc = connect(sfd, (struct sockaddr *)&local, namelen);
@@ -1413,13 +1423,13 @@ int osmo_sock_unix_init(uint16_t type, uint8_t proto,
 	rc = osmo_sock_init_tail(sfd, type, flags);
 	if (rc < 0) {
 		close(sfd);
-		sfd = -1;
+		sfd = rc;
 	}
 
 	return sfd;
 err:
 	close(sfd);
-	return -1;
+	return -errno;
 }
 
 /*! Initialize a unix domain socket and fill \ref osmo_fd
@@ -1545,6 +1555,11 @@ int osmo_sock_get_name_buf(char *str, size_t str_len, int fd)
 	char hostbuf_l[INET6_ADDRSTRLEN], hostbuf_r[INET6_ADDRSTRLEN];
 	char portbuf_l[6], portbuf_r[6];
 	int rc;
+
+	if (fd < 0) {
+		osmo_strlcpy(str, "<error-bad-fd>", str_len);
+		return -EBADF;
+	}
 
 	/* get local */
 	if ((rc = osmo_sock_get_ip_and_port(fd, hostbuf_l, sizeof(hostbuf_l), portbuf_l, sizeof(portbuf_l), true))) {

@@ -13,7 +13,7 @@ endif
 noinst_LTLIBRARIES = libisdnint.la
 lib_LTLIBRARIES = libosmoisdn.la
 
-libisdnint_la_SOURCES = i460_mux.c lapd_core.c
+libisdnint_la_SOURCES = i460_mux.c lapd_core.c v110.c
 
 libisdnint_la_LDFLAGS = -no-undefined
 libisdnint_la_LIBADD = $(top_builddir)/src/core/libosmocore.la
@@ -23,3 +23,4 @@ libosmoisdn_la_LDFLAGS = $(LTLDFLAGS_OSMOISDN) -version-info $(LIBVERSION) -no-u
 libosmoisdn_la_LIBADD = libisdnint.la $(TALLOC_LIBS)
 
 EXTRA_DIST = libosmoisdn.map
+EXTRA_libosmoisdn_la_DEPENDENCIES = libosmoisdn.map

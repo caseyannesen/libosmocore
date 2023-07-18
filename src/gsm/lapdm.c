@@ -57,6 +57,7 @@
 #define LAPDm_ADDR_SAPI(addr) (((addr) >> 2) & 0x7)
 #define LAPDm_ADDR_CR(addr) (((addr) >> 1) & 0x1)
 #define LAPDm_ADDR_EA(addr) ((addr) & 0x1)
+#define LAPDm_ADDR_SHORT_L2(addr) ((addr) & 0x3)
 
 /* TS 04.06 Table 3 / Section 3.4.3 */
 #define LAPDm_CTRL_I(nr, ns, p)	((((nr) & 0x7) << 5) | (((p) & 0x1) << 4) | (((ns) & 0x7) << 1))
@@ -253,7 +254,7 @@ int lapdm_channel_init2(struct lapdm_channel *lc, enum lapdm_mode mode,
  *  \param[in] t200_ms_dcch per-SAPI array of T200 in milli-seconds for DCCH
  *  \param[in] t200_ms_acch per-SAPI array of T200 in milli-seconds for SACCH
  *  \param[in] chan_t GSM channel type (to correctly set N200)
- *  \parma[in] name_pfx human-readable name (copied by function + extended with ACCH/DCCH)
+ *  \param[in] name_pfx human-readable name (copied by function + extended with ACCH/DCCH)
  */
 int lapdm_channel_init3(struct lapdm_channel *lc, enum lapdm_mode mode,
 			const int *t200_ms_dcch, const int *t200_ms_acch, enum gsm_chan_t chan_t,
@@ -361,7 +362,7 @@ static int tx_ph_data_enqueue(struct lapdm_datalink *dl, struct msgb *msg,
 		*msgb_push(msg, 1) = link_id;
 		*msgb_push(msg, 1) = chan_nr;
 		msgb_enqueue(&dl->dl.tx_queue, msg);
-		return -EBUSY;
+		return 0;
 	}
 
 	osmo_prim_init(&pp.oph, SAP_GSM_PH, PRIM_PH_DATA,
@@ -725,15 +726,24 @@ static int l2_ph_data_ind(struct msgb *msg, struct lapdm_entity *le,
 		if (mctx.link_id & 0x40) {
 			/* It was received from network on SACCH */
 
-			/* If UI on SACCH sent by BTS, lapdm_fmt must be B4 */
-			if (le->mode == LAPDM_MODE_MS
-			 && LAPDm_CTRL_is_U(msg->l2h[3])
-			 && LAPDm_CTRL_U_BITS(msg->l2h[3]) == 0) {
+			/* A Short L3 header has both bits == 0. */
+			if (LAPDm_ADDR_SHORT_L2(msg->l2h[2]) == 0) {
+				mctx.lapdm_fmt = LAPDm_FMT_Bter;
+				n201 = N201_Bter_SACCH;
+				sapi = 0;
+			} else if (le->mode == LAPDM_MODE_MS
+				&& LAPDm_CTRL_is_U(msg->l2h[3])
+				&& LAPDm_CTRL_U_BITS(msg->l2h[3]) == 0) {
+				/* If UI on SACCH sent by BTS, lapdm_fmt must be B4 */
 				mctx.lapdm_fmt = LAPDm_FMT_B4;
 				n201 = N201_B4;
+				/* sapi is found after two-btyte L1 header */
+				sapi = (msg->l2h[2] >> 2) & 7;
 			} else {
 				mctx.lapdm_fmt = LAPDm_FMT_B;
 				n201 = N201_AB_SACCH;
+				/* sapi is found after two-btyte L1 header */
+				sapi = (msg->l2h[2] >> 2) & 7;
 			}
 			/* SACCH frames have a two-byte L1 header that
 			 * OsmocomBB L1 doesn't strip */
@@ -741,11 +751,17 @@ static int l2_ph_data_ind(struct msgb *msg, struct lapdm_entity *le,
 			mctx.ta_ind = msg->l2h[1];
 			msgb_pull(msg, 2);
 			msg->l2h += 2;
-			sapi = (msg->l2h[0] >> 2) & 7;
 		} else {
-			mctx.lapdm_fmt = LAPDm_FMT_B;
-			n201 = N201_AB_SDCCH;
-			sapi = (msg->l2h[0] >> 2) & 7;
+			/* A Short L3 header has both bits == 0. */
+			if (LAPDm_ADDR_SHORT_L2(msg->l2h[2]) == 0) {
+				mctx.lapdm_fmt = LAPDm_FMT_Bter;
+				n201 = N201_Bter_SDCCH;
+				sapi = 0;
+			} else {
+				mctx.lapdm_fmt = LAPDm_FMT_B;
+				n201 = N201_AB_SDCCH;
+				sapi = (msg->l2h[0] >> 2) & 7;
+			}
 		}
 	}
 
@@ -838,9 +854,7 @@ static int l2_ph_data_ind(struct msgb *msg, struct lapdm_entity *le,
 		rc = lapd_ph_data_ind(msg, &lctx);
 		break;
 	case LAPDm_FMT_Bter:
-		/* FIXME */
-		msgb_free(msg);
-		break;
+		/* fall-through */
 	case LAPDm_FMT_Bbis:
 		/* directly pass up to layer3 */
 		msg->l3h = msg->l2h;
@@ -895,55 +909,32 @@ int lapdm_phsap_up(struct osmo_prim_hdr *oph, struct lapdm_entity *le)
 	if (oph->sap != SAP_GSM_PH) {
 		LOGP(DLLAPD, LOGL_ERROR, "primitive for unknown SAP %u\n",
 			oph->sap);
-		rc = -ENODEV;
-		goto free;
+		msgb_free(oph->msg);
+		return -ENODEV;
 	}
 
-	switch (oph->primitive) {
-	case PRIM_PH_DATA:
-		if (oph->operation != PRIM_OP_INDICATION) {
-			LOGP(DLLAPD, LOGL_ERROR, "PH_DATA is not INDICATION %u\n",
-				oph->operation);
-			rc = -ENODEV;
-			goto free;
-		}
+	switch (OSMO_PRIM_HDR(oph)) {
+	case OSMO_PRIM(PRIM_PH_DATA, PRIM_OP_INDICATION):
 		rc = l2_ph_data_ind(oph->msg, le, pp->u.data.chan_nr,
 				    pp->u.data.link_id);
 		break;
-	case PRIM_PH_RTS:
-		if (oph->operation != PRIM_OP_INDICATION) {
-			LOGP(DLLAPD, LOGL_ERROR, "PH_RTS is not INDICATION %u\n",
-				oph->operation);
-			rc = -ENODEV;
-			goto free;
-		}
+	case OSMO_PRIM(PRIM_PH_RTS, PRIM_OP_INDICATION):
 		rc = l2_ph_data_conf(oph->msg, le);
 		break;
-	case PRIM_PH_RACH:
-		switch (oph->operation) {
-		case PRIM_OP_INDICATION:
-			rc = l2_ph_rach_ind(le, pp->u.rach_ind.ra, pp->u.rach_ind.fn,
-					    pp->u.rach_ind.acc_delay);
-			break;
-		case PRIM_OP_CONFIRM:
-			rc = l2_ph_chan_conf(oph->msg, le, pp->u.rach_ind.fn);
-			break;
-		default:
-			rc = -EIO;
-			goto free;
-		}
+	case OSMO_PRIM(PRIM_PH_RACH, PRIM_OP_INDICATION):
+		rc = l2_ph_rach_ind(le, pp->u.rach_ind.ra, pp->u.rach_ind.fn,
+				    pp->u.rach_ind.acc_delay);
+		break;
+	case OSMO_PRIM(PRIM_PH_RACH, PRIM_OP_CONFIRM):
+		rc = l2_ph_chan_conf(oph->msg, le, pp->u.rach_ind.fn);
 		break;
 	default:
 		LOGP(DLLAPD, LOGL_ERROR, "Unknown primitive %u\n",
 			oph->primitive);
-		rc = -EINVAL;
-		goto free;
+		msgb_free(oph->msg);
+		return -EINVAL;
 	}
 
-	return rc;
-
-free:
-	msgb_free(oph->msg);
 	return rc;
 }
 
@@ -1030,6 +1021,7 @@ static int rslms_rx_rll_udata_req(struct msgb *msg, struct lapdm_datalink *dl)
 	uint8_t sapi = link_id & 7;
 	struct tlv_parsed tv;
 	int length, ui_bts;
+	bool use_b_ter;
 
 	if (!le) {
 		LOGDL(&dl->dl, LOGL_ERROR, "lapdm_datalink without entity error\n");
@@ -1055,8 +1047,10 @@ static int rslms_rx_rll_udata_req(struct msgb *msg, struct lapdm_datalink *dl)
 	}
 	msg->l3h = (uint8_t *) TLVP_VAL(&tv, RSL_IE_L3_INFO);
 	length = TLVP_LEN(&tv, RSL_IE_L3_INFO);
+	/* check for Bter frame */
+	use_b_ter = (length == ((link_id & 0x40) ? 21 : 23) && sapi == 0);
 	/* check if the layer3 message length exceeds N201 */
-	if (length + ((link_id & 0x40) ? 4 : 2) + !ui_bts > 23) {
+	if (length + ((link_id & 0x40) ? 4 : 2) + !ui_bts > 23 && !use_b_ter) {
 		LOGDL(&dl->dl, LOGL_ERROR, "frame too large: %d > N201(%d) "
 			"(discarding)\n", length,
 			((link_id & 0x40) ? 18 : 20) + ui_bts);
@@ -1071,11 +1065,14 @@ static int rslms_rx_rll_udata_req(struct msgb *msg, struct lapdm_datalink *dl)
 	msgb_trim(msg, length);
 
 	/* Push L1 + LAPDm header on msgb */
-	msg->l2h = msgb_push(msg, 2 + !ui_bts);
-	msg->l2h[0] = LAPDm_ADDR(LAPDm_LPD_NORMAL, sapi, dl->dl.cr.loc2rem.cmd);
-	msg->l2h[1] = LAPDm_CTRL_U(LAPDm_U_UI, 0);
-	if (!ui_bts)
-		msg->l2h[2] = LAPDm_LEN(length);
+	if (!use_b_ter) {
+		msg->l2h = msgb_push(msg, 2 + !ui_bts);
+		msg->l2h[0] = LAPDm_ADDR(LAPDm_LPD_NORMAL, sapi, dl->dl.cr.loc2rem.cmd);
+		msg->l2h[1] = LAPDm_CTRL_U(LAPDm_U_UI, 0);
+		if (!ui_bts)
+			msg->l2h[2] = LAPDm_LEN(length);
+	} else
+		msg->l2h = msg->data;
 	if (link_id & 0x40) {
 		msg->l2h = msgb_push(msg, 2);
 		msg->l2h[0] = le->tx_power;

@@ -82,6 +82,8 @@ extern const struct value_string *gprs_upd_t_strs;
 
 enum gsm48_gprs_ie_mm {
 	GSM48_IE_GMM_CIPH_CKSN		= 0x08, /* 10.5.1.2 */
+	GSM48_IE_GMM_PTMSI_TYPE		= 0x0e, /* 10.5.5.29 */
+	GSM48_IE_GMM_TMSI_BASED_NRI_C	= 0x10, /* 10.5.5.31 */
 	GSM48_IE_GMM_TIMER_READY	= 0x17,	/* 10.5.7.3 */
 	GSM48_IE_GMM_ALLOC_PTMSI	= 0x18,	/* 10.5.1.4 */
 	GSM48_IE_GMM_PTMSI_SIG		= 0x19,	/* 10.5.5.8 */
@@ -92,24 +94,35 @@ enum gsm48_gprs_ie_mm {
 	GSM48_IE_GMM_DRX_PARAM		= 0x27,	/* 10.5.5.6 */
 	GSM48_IE_GMM_AUTN		= 0x28,	/* 10.5.3.1.1 */
 	GSM48_IE_GMM_AUTH_RES_EXT	= 0x29, /* 10.5.3.2.1 */
+	GSM48_IE_GMM_TIMER_T3302	= 0x2A,	/* 10.5.7.4 */
 	GSM48_IE_GMM_AUTH_FAIL_PAR	= 0x30,	/* 10.5.3.2.2 */
 	GSM48_IE_GMM_MS_NET_CAPA	= 0x31,	/* 10.5.5.12 */
 	GSM48_IE_GMM_PDP_CTX_STATUS	= 0x32,	/* 10.5.7.1 */
 	GSM48_IE_GMM_PS_LCS_CAPA	= 0x33,	/* 10.5.5.22 */
 	GSM48_IE_GMM_GMM_MBMS_CTX_ST	= 0x35,	/* 10.5.7.6 */
+	GSM48_IE_GMM_TIMER_T3346	= 0x3A,	/* 10.5.7.4 */
 	GSM48_IE_GMM_NET_FEAT_SUPPORT	= 0xB0,	/* 10.5.5.23 */
 };
 
 enum gsm48_gprs_ie_sm {
+	GSM48_IE_GSM_RADIO_PRIO		= 0x08,	/* 10.5.7.2 */
+	GSM48_IE_GSM_DEV_PROP		= 0x0C,	/* 10.5.7.8 */
 	GSM48_IE_GSM_APN		= 0x28,	/* 10.5.6.1 */
 	GSM48_IE_GSM_PROTO_CONF_OPT	= 0x27,	/* 10.5.6.3 */
 	GSM48_IE_GSM_PDP_ADDR		= 0x2b, /* 10.5.6.4 */
 	GSM48_IE_GSM_AA_TMR		= 0x29,	/* 10.5.7.3 */
+	GSM48_IE_GSM_QOS		= 0x30,	/* 10.5.6.5 */
+	GSM48_IE_GSM_TFT		= 0x31,	/* 10.5.6.12 */
+	GSM48_IE_GSM_LLC_SAPI		= 0x32,	/* 10.5.6.9 */
+	GSM48_IE_GSM_MBIFOM_CONT	= 0x33,	/* 10.5.6.21 */
+	GSM48_IE_GSM_PFI		= 0x34,	/* 10.5.6.11 */
 	GSM48_IE_GSM_NAME_FULL		= 0x43, /* 10.5.3.5a */
 	GSM48_IE_GSM_NAME_SHORT		= 0x45, /* 10.5.3.5a */
 	GSM48_IE_GSM_TIMEZONE		= 0x46, /* 10.5.3.8 */
 	GSM48_IE_GSM_UTC_AND_TZ		= 0x47, /* 10.5.3.9 */
 	GSM48_IE_GSM_LSA_ID		= 0x48, /* 10.5.3.11 */
+	GSM48_IE_GSM_EXT_QOS		= 0x5C, /* 10.5.6.5B */
+	GSM48_IE_GSM_EXT_PROTO_CONF_OPT	= 0x7B, /* 10.5.6.3a */
 
 	/* Fake IEs that are not present on the Layer3 air interface,
 	 * but which we use to simplify internal APIs */
@@ -128,7 +141,7 @@ struct gsm48_ra_upd_ack {
 	struct gsm48_ra_id ra_id; /* 10.5.5.15 */
 	uint8_t data[0];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t upd_result:4, force_stby:4;
 	uint8_t ra_upd_timer;
 	struct gsm48_ra_id ra_id;
@@ -157,7 +170,7 @@ struct gsm48_attach_ack {
 	struct gsm48_ra_id ra_id; /* 10.5.5.15 */
 	uint8_t data[0];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t force_stby:4, att_result:4;
 	uint8_t ra_upd_timer;
 	uint8_t radio_prio;
@@ -175,7 +188,7 @@ struct gsm48_auth_ciph_req {
 		ac_ref_nr:4;	/* 10.5.5.19 */
 	uint8_t data[0];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t imeisv_req:4, ciph_alg:4;
 	uint8_t ac_ref_nr:4, force_stby:4;
 	uint8_t data[0];
@@ -189,7 +202,7 @@ struct gsm48_auth_ciph_resp {
 		spare:4;
 	uint8_t data[0];
 #elif OSMO_IS_BIG_ENDIAN
-/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianess.py) */
+/* auto-generated from the little endian part above (libosmocore/contrib/struct_endianness.py) */
 	uint8_t spare:4, ac_ref_nr:4;
 	uint8_t data[0];
 #endif

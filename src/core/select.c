@@ -54,6 +54,39 @@ static __thread int maxfd = 0;
 static __thread struct llist_head osmo_fds; /* TLS cannot use LLIST_HEAD() */
 static __thread int unregistered_count;
 
+/* Array of struct osmo_fd * (size "max_fd") ordered by "ofd->fd" */
+static __thread struct {
+	struct osmo_fd **table;
+	unsigned int size;
+} osmo_fd_lookup;
+
+static void osmo_fd_lookup_table_extend(unsigned int new_max_fd)
+{
+	unsigned int min_new_size;
+	unsigned int pw2;
+	unsigned int new_size;
+
+	/* First calculate the minimally required new size of the array in bytes: */
+	min_new_size = (new_max_fd + 1) * sizeof(struct osmo_fd *);
+	/* Now find the lower power of two of min_new_size (in bytes): */
+	pw2 = 32 - __builtin_clz(min_new_size);
+	/* get next (upper side) power of 2: */
+	pw2++;
+	OSMO_ASSERT(pw2 <= 31); /* Avoid shifting more than 31 bits */
+	new_size = 1 << (pw2 + 1);
+
+	/* Let's make it at least 1024B, to avoid reallocating quickly at startup */
+	if (new_size < 1024)
+		new_size = 1024;
+	if (new_size > osmo_fd_lookup.size) {
+		uint8_t *ptr = talloc_realloc_size(OTC_GLOBAL, osmo_fd_lookup.table, new_size);
+		OSMO_ASSERT(ptr);
+		memset(ptr + osmo_fd_lookup.size, 0, new_size - osmo_fd_lookup.size);
+		osmo_fd_lookup.table = (struct osmo_fd **)ptr;
+		osmo_fd_lookup.size = new_size;
+	}
+}
+
 #ifndef FORCE_IO_SELECT
 struct poll_state {
 	/* array of pollfd */
@@ -118,6 +151,9 @@ bool osmo_fd_is_registered(struct osmo_fd *fd)
 /*! Register a new file descriptor with select loop abstraction
  *  \param[in] fd osmocom file descriptor to be registered
  *  \returns 0 on success; negative in case of error
+ *
+ *  The API expects fd field of the struct osmo_fd to remain unchanged while
+ *  registered, ie until osmo_fd_unregister() is called on it.
  */
 int osmo_fd_register(struct osmo_fd *fd)
 {
@@ -142,8 +178,10 @@ int osmo_fd_register(struct osmo_fd *fd)
 		return flags;
 
 	/* Register FD */
-	if (fd->fd > maxfd)
+	if (fd->fd > maxfd) {
 		maxfd = fd->fd;
+		osmo_fd_lookup_table_extend(maxfd);
+	}
 
 #ifdef OSMO_FD_CHECK
 	if (osmo_fd_is_registered(fd)) {
@@ -166,12 +204,17 @@ int osmo_fd_register(struct osmo_fd *fd)
 #endif /* FORCE_IO_SELECT */
 
 	llist_add_tail(&fd->list, &osmo_fds);
+	osmo_fd_lookup.table[fd->fd] = fd;
 
 	return 0;
 }
 
 /*! Unregister a file descriptor from select loop abstraction
  *  \param[in] fd osmocom file descriptor to be unregistered
+ *
+ *  Caller is responsible for ensuring the fd is really registered before calling this API.
+ *  This function must be called before changing the value of the fd field in
+ *  the struct osmo_fd.
  */
 void osmo_fd_unregister(struct osmo_fd *fd)
 {
@@ -184,6 +227,21 @@ void osmo_fd_unregister(struct osmo_fd *fd)
 	g_poll.num_registered--;
 #endif /* FORCE_IO_SELECT */
 
+	if (OSMO_UNLIKELY(fd->fd < 0  || fd->fd > maxfd)) {
+		/* Some old users used to incorrectly set fd = -1 *before* calling osmo_unregister().
+		 * Hence, in order to keep backward compatibility it's not possible to assert() here.
+		 * Instead, print an error message since this is actually a bug in the API user. */
+#ifdef OSMO_FD_CHECK
+		osmo_panic("osmo_fd_unregister(fd=%u) out of expected range (0..%u), fix your code!!!\n",
+			   fd->fd, maxfd);
+#else
+		fprintf(stderr, "osmo_fd_unregister(fd=%u) out of expected range (0..%u), fix your code!!!\n",
+			fd->fd, maxfd);
+		return;
+#endif
+	}
+
+	osmo_fd_lookup.table[fd->fd] = NULL;
 	/* If existent, free any statistical data */
 	osmo_stats_tcp_osmo_fd_unregister(fd);
 }
@@ -464,23 +522,21 @@ int osmo_select_main_ctx(int polling)
  *  \returns \ref osmo_fd for \ref fd; NULL in case it doesn't exist */
 struct osmo_fd *osmo_fd_get_by_fd(int fd)
 {
-	struct osmo_fd *ofd;
-
-	llist_for_each_entry(ofd, &osmo_fds, list) {
-		if (ofd->fd == fd)
-			return ofd;
-	}
-	return NULL;
+	if (fd > maxfd)
+		return NULL;
+	return osmo_fd_lookup.table[fd];
 }
 
 /*! initialize the osmocom select abstraction for the current thread */
 void osmo_select_init(void)
 {
 	INIT_LLIST_HEAD(&osmo_fds);
+	osmo_fd_lookup_table_extend(0);
 }
 
-/* ensure main thread always has pre-initialized osmo_fds */
-static __attribute__((constructor)) void on_dso_load_select(void)
+/* ensure main thread always has pre-initialized osmo_fds
+ * priority 102: must run after on_dso_load_ctx */
+static __attribute__((constructor(102))) void on_dso_load_select(void)
 {
 	osmo_select_init();
 }

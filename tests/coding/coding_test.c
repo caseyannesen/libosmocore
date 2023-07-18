@@ -24,6 +24,7 @@
 #include <osmocom/core/bits.h>
 #include <osmocom/core/utils.h>
 
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/coding/gsm0503_coding.h>
 
 #define DUMP_U_AT(b, x, u) do {						\
@@ -299,7 +300,7 @@ static void test_hr(uint8_t *speech, int len)
 	memset(bursts_s + 6, 0, 20);
 
 	/* Decode, correcting errors */
-	rc = gsm0503_tch_hr_decode(result, bursts_s, 0,
+	rc = gsm0503_tch_hr_decode2(result, bursts_s, 0,
 		&n_errors, &n_bits_total);
 	CHECK_RC_OR_RET(rc == len, "decoding");
 
@@ -308,6 +309,51 @@ static void test_hr(uint8_t *speech, int len)
 		n_errors, n_bits_total, (float)n_errors/n_bits_total);
 
 	OSMO_ASSERT(!memcmp(speech, result, len));
+
+	printf("\n");
+}
+
+static void test_facch(const uint8_t *data, bool half_rate)
+{
+	ubit_t bursts_u[116 * 8 * 2] = { 0 };
+	sbit_t bursts_s[116 * 8 * 2] = { 0 };
+	int rc;
+
+	/* Encode the given FACCH message three times (at different offsets) */
+	printf("%s(FACCH/%c): encoding: %s\n",
+	       __func__, half_rate ? 'H' : 'F',
+	       osmo_hexdump(&data[0], GSM_MACBLOCK_LEN));
+	for (unsigned int i = 0; i < 3; i++) {
+		ubit_t *pos = &bursts_u[116 * 4 * i];
+
+		if (half_rate)
+			rc = gsm0503_tch_hr_facch_encode(pos, &data[0]);
+		else
+			rc = gsm0503_tch_fr_facch_encode(pos, &data[0]);
+		CHECK_RC_OR_RET(rc == 0, "encoding");
+	}
+
+	/* Prepare soft-bits */
+	osmo_ubit2sbit(bursts_s, bursts_u, sizeof(bursts_s));
+
+	/* Decode three FACCH messages (at different offsets) */
+	for (unsigned int i = 0; i < 3; i++) {
+		const sbit_t *pos = &bursts_s[116 * 4 * i];
+		uint8_t result[GSM_MACBLOCK_LEN];
+		int n_errors, n_bits_total;
+
+		if (half_rate)
+			rc = gsm0503_tch_hr_facch_decode(&result[0], pos,
+							 &n_errors, &n_bits_total);
+		else
+			rc = gsm0503_tch_fr_facch_decode(&result[0], pos,
+							 &n_errors, &n_bits_total);
+		CHECK_RC_OR_RET(rc == GSM_MACBLOCK_LEN, "decoding");
+
+		printf("%s(FACCH/%c): decoded (BER=%d/%d): %s\n",
+		       __func__, half_rate ? 'H' : 'F', n_errors, n_bits_total,
+		       osmo_hexdump(result, GSM_MACBLOCK_LEN));
+	}
 
 	printf("\n");
 }
@@ -487,7 +533,128 @@ static const sbit_t test_rach_11bit[6][36] = {
 
 uint8_t test_speech_fr[33];
 uint8_t test_speech_efr[31];
-uint8_t test_speech_hr[15];
+uint8_t test_speech_hr[14];
+
+struct csd_test_case {
+	const char *name;
+	unsigned int num_bits;
+	int (*enc_fn)(ubit_t *out, const ubit_t *in);
+	int (*dec_fn)(ubit_t *out, const sbit_t *in, int *ne, int *nb);
+	bool half_rate;
+};
+
+static const struct csd_test_case csd_tests[] = {
+	{
+		.name = "TCH/F9.6",
+		.num_bits = 4 * 60,
+		.enc_fn = &gsm0503_tch_fr96_encode,
+		.dec_fn = &gsm0503_tch_fr96_decode,
+	},
+	{
+		.name = "TCH/F4.8",
+		.num_bits = 2 * 60,
+		.enc_fn = &gsm0503_tch_fr48_encode,
+		.dec_fn = &gsm0503_tch_fr48_decode,
+	},
+	{
+		.name = "TCH/H4.8",
+		.num_bits = 4 * 60,
+		.enc_fn = &gsm0503_tch_hr48_encode,
+		.dec_fn = &gsm0503_tch_hr48_decode,
+		.half_rate = true,
+	},
+	{
+		.name = "TCH/F2.4",
+		.num_bits = 2 * 36,
+		.enc_fn = &gsm0503_tch_fr24_encode,
+		.dec_fn = &gsm0503_tch_fr24_decode,
+	},
+	{
+		.name = "TCH/H2.4",
+		.num_bits = 4 * 36,
+		.enc_fn = &gsm0503_tch_hr24_encode,
+		.dec_fn = &gsm0503_tch_hr24_decode,
+		.half_rate = true,
+	},
+	{
+		.name = "TCH/F14.4",
+		.num_bits = 290,
+		.enc_fn = &gsm0503_tch_fr144_encode,
+		.dec_fn = &gsm0503_tch_fr144_decode,
+	},
+};
+
+static void test_csd(const struct csd_test_case *tc, bool facch)
+{
+	const uint8_t patterns[] = { 0x00, 0xaa, 0xff };
+	ubit_t bursts_u[116 * (22 + 8)] = { 0 };
+	sbit_t bursts_s[116 * (22 + 8)] = { 0 };
+	ubit_t data[512];
+	int rc;
+
+	/* Encode three data blocks, each block filled-in with a pattern */
+	for (unsigned int i = 0; i < ARRAY_SIZE(patterns); i++) {
+		for (unsigned int j = 0; j < tc->num_bits; j++)
+			data[j] = (patterns[i] & (1 << (j % 8))) != 0;
+
+		rc = tc->enc_fn(&bursts_u[i * 4 * 116], &data[0]);
+		CHECK_RC_OR_RET(rc == 0, "encoding");
+
+		/* Test FACCH bitstealing */
+		if (facch && i == 1) {
+			memset(&data, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
+			if (tc->half_rate)
+				rc = gsm0503_tch_hr_facch_encode(&bursts_u[116 * 4], &data[0]);
+			else
+				rc = gsm0503_tch_fr_facch_encode(&bursts_u[116 * 4], &data[0]);
+			CHECK_RC_OR_RET(rc == 0, "encoding FACCH");
+		}
+	}
+
+	/* Prepare soft-bits */
+	osmo_ubit2sbit(&bursts_s[0], &bursts_u[0], sizeof(bursts_s));
+
+	/* Decode the soft-bits, print decoded blocks */
+	for (unsigned int i = 0; i < ARRAY_SIZE(patterns); i++) {
+		int n_errors, n_bits_total;
+
+		rc = tc->dec_fn(&data[0], &bursts_s[i * 4 * 116],
+				&n_errors, &n_bits_total);
+		CHECK_RC_OR_RET(rc == tc->num_bits, "decoding");
+
+		printf("%s(%s): block #%u (pattern 0x%02x): n_errors=%d / n_bits_total=%d\n",
+		       __func__, tc->name, i, patterns[i], n_errors, n_bits_total);
+
+		for (unsigned int j = 0; j < tc->num_bits; j++) {
+			if (j && j % 64 == 0)
+				printf("\n");
+			else if (j && j % 8 == 0)
+				printf(" ");
+			printf("%c", data[j] ? '1' : '0');
+		}
+		printf("\n");
+	}
+
+	/* Test FACCH bitstealing if requested */
+	if (facch) {
+		int n_errors = 0, n_bits_total = 0;
+
+		if (tc->half_rate) {
+			rc = gsm0503_tch_hr_facch_decode(&data[0], &bursts_s[116 * 4],
+							 &n_errors, &n_bits_total);
+		} else {
+			rc = gsm0503_tch_fr_facch_decode(&data[0], &bursts_s[116 * 4],
+							 &n_errors, &n_bits_total);
+		}
+		CHECK_RC_OR_RET(rc == GSM_MACBLOCK_LEN, "decoding FACCH");
+
+		printf("%s(%s): FACCH/%c (pattern 0x2b): n_errors=%d / n_bits_total=%d\n",
+		       __func__, tc->name, tc->half_rate ? 'H' : 'F', n_errors, n_bits_total);
+		printf("%s\n", osmo_hexdump(&data[0], GSM_MACBLOCK_LEN));
+	}
+
+	printf("\n");
+}
 
 int main(int argc, char **argv)
 {
@@ -533,7 +700,6 @@ int main(int argc, char **argv)
 
 	for (i = 0; i < sizeof(test_speech_hr); i++)
 		test_speech_hr[i] = i * 17;
-	test_speech_hr[0] = 0x00;
 	test_hr(test_speech_hr, sizeof(test_speech_hr));
 
 	for (i = 0; i < len_l2; i++)
@@ -549,6 +715,20 @@ int main(int argc, char **argv)
 			test_pdtch(&test_macblock[i], 54);
 		}
 	}
+
+	printf("\nTesting FACCH/F codec:\n");
+	for (i = 0; i < ARRAY_SIZE(test_l2); i++)
+		test_facch(test_l2[i], false);
+	printf("\nTesting FACCH/H codec:\n");
+	for (i = 0; i < ARRAY_SIZE(test_l2); i++)
+		test_facch(test_l2[i], true);
+
+	printf("\nTesting CSD functions (no FACCH):\n");
+	for (i = 0; i < ARRAY_SIZE(csd_tests); i++)
+		test_csd(&csd_tests[i], false);
+	printf("\nTesting CSD functions (with FACCH):\n");
+	for (i = 0; i < ARRAY_SIZE(csd_tests); i++)
+		test_csd(&csd_tests[i], true);
 
 	printf("Success\n");
 
