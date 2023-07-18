@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 #include <unistd.h>
 
 #ifdef HAVE_STRINGS_H
@@ -496,17 +497,13 @@ static int _output_buf(char *buf, int buf_len, struct log_target *target, unsign
 	if (!cont) {
 		if (target->print_ext_timestamp) {
 #ifdef HAVE_LOCALTIME_R
-			struct tm tm;
-			struct timeval tv;
-			osmo_gettimeofday(&tv, NULL);
-			localtime_r(&tv.tv_sec, &tm);
-			ret = snprintf(buf + offset, rem, "%04d%02d%02d%02d%02d%02d%03d ",
-					tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-					tm.tm_hour, tm.tm_min, tm.tm_sec,
-					(int)(tv.tv_usec / 1000));
-			if (ret < 0)
-				goto err;
-			OSMO_SNPRINTF_RET(ret, rem, offset, len);
+		struct timeval tv;
+		osmo_gettimeofday(&tv, NULL);
+		uint64_t timestamp = (uint64_t)tv.tv_sec * 1000 + (uint64_t)tv.tv_usec / 1000;
+		ret = snprintf(buf + offset, rem, "%" PRIu64 " ", timestamp);
+		if (ret < 0)
+			goto err;
+		OSMO_SNPRINTF_RET(ret, rem, offset, len);
 #endif
 		} else if (target->print_timestamp) {
 			time_t tm;
@@ -849,6 +846,7 @@ void log_set_use_color(struct log_target *target, int use_color)
 void log_set_print_timestamp(struct log_target *target, int print_timestamp)
 {
 	target->print_timestamp = print_timestamp;
+	
 }
 
 /*! Enable or disable printing of extended timestamps while logging
